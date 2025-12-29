@@ -10,3 +10,4 @@ dist
 
 api_tests
 .vscode
+tsconfig.tsbuildinfo
