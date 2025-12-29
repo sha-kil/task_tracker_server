@@ -2,6 +2,7 @@ import express from "express"
 import { getAddress } from "src/lib/address.js"
 import prisma from "src/lib/prisma.js"
 import { UserGETSchema, UserPUTSchema } from "src/schema/user.js"
+import type { Request, Response } from "express"
 
 const router = express.Router()
 
@@ -43,6 +44,19 @@ export async function getUser(userId: bigint) {
   })
 }
 
+export async function getUserByProfilePublicId(publicId: string) {
+  const userProfile = await prisma.userProfile.findUnique({
+    where: { publicId },
+    include: { userCredential: true },
+  })
+
+  if (userProfile === null) {
+    return null
+  }
+
+  return await getUser(userProfile.userCredential.id)
+}
+
 router.get("/:userId", async (req, res) => {
   if (req.userId === undefined) {
     console.error("Unauthorized access attempt to get user")
@@ -56,32 +70,13 @@ router.get("/:userId", async (req, res) => {
   }
 
   try {
-    const userData = await prisma.userProfile.findUnique({
-      where: { publicId: userIdParam },
-      select: {
-        userCredential: {
-          select: { id: true },
-        },
-      },
-    })
-
-    if (userData === null) {
-      console.error("User not found: ", userIdParam)
+    const userData = await getUserByProfilePublicId(userIdParam)
+    if (!userData?.success || userData.data === null) {
+      console.error("User not found: ", userData?.error)
       return res.status(404).json({ error: "User not found" })
     }
 
-    const {
-      success,
-      data: user,
-      error,
-    } = await getUser(userData.userCredential.id)
-    if (!success) {
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch user", details: error })
-    }
-
-    res.json(user)
+    res.json(userData.data)
   } catch (error) {
     console.error("Error fetching user: ", error)
     res.status(500).json({ error: "Failed to fetch user" })
@@ -182,17 +177,21 @@ router.get("/project/:projectId", async (req, res) => {
 })
 
 // Update user by ID
-router.put("/", async (req, res) => {
+router.patch("/:userId", async (req: Request, res: Response) => {
   if (req.userId === undefined) {
     console.error("Unauthorized access attempt to update user")
     return res.status(403).json({ error: "Forbidden" })
   }
 
   try {
-    const userId = req.userId
+    const currentUser = await getUser(req.userId)
+    if (!currentUser.success || currentUser.data === null) {
+      console.error("Current user not found")
+      return res.status(404).json({ error: "User not found" })
+    }
 
     // Authorization check: ensure user can only update their own profile
-    if (req.userId !== userId) {
+    if (currentUser.data.id !== req.params.userId) {
       console.error(
         "Forbidden: User attempted to update another user's profile"
       )
@@ -214,20 +213,24 @@ router.put("/", async (req, res) => {
     const { addressId, ...rest } = validatedUserInput.data
     const profileCreationData = {
       ...rest,
-      ...(address ? { addressId: address.id } : {}),
+      ...(address !== null ? { addressId: address.id } : {}),
     }
     await prisma.userProfile.update({
-      where: { id: userId },
+      where: { publicId: currentUser.data.id },
       data: profileCreationData,
     })
 
-    const { success, data: updatedUser, error } = await getUser(userId)
-    if (!success) {
-      console.error("Error fetching updated user: ", error)
+    const updatedUserData = await getUserByProfilePublicId(req.params.userId)
+    if (
+      updatedUserData === null ||
+      updatedUserData.data === null ||
+      !updatedUserData.success
+    ) {
+      console.error("Error fetching updated user: ", updatedUserData?.error)
       return res.status(500).json({ error: "Failed to fetch updated user" })
     }
 
-    res.json(updatedUser)
+    res.json(updatedUserData.data)
   } catch (error) {
     console.error("Error updating user: ", error)
     res.status(500).json({ error: "Failed to update user" })
