@@ -1,4 +1,4 @@
-import z from "zod";
+import z from "zod"
 
 export const IssueStatusGETSchema = z.object({
   color: z.string().optional(),
@@ -10,5 +10,5 @@ export const IssueStatusGETSchema = z.object({
 export const IssueStatusCreateSchema = IssueStatusGETSchema.omit({
   id: true,
 }).extend({
-  projectBoardId: z.uuidv7()
+  projectBoardId: z.uuidv7(),
 })

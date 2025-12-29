@@ -98,5 +98,4 @@ export async function getDefaultIssueStatuses() {
   })
 
   return defaultStatuses
-  
 }

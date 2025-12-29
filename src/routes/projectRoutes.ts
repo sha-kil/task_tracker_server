@@ -1,6 +1,6 @@
 import express from "express"
 import prisma from "src/lib/prisma.js"
-import { ProjectPOSTSchema } from "src/schema/project.js"
+import { ProjectGETSchema, ProjectPOSTSchema } from "src/schema/project.js"
 
 const router = express.Router()
 
@@ -28,8 +28,23 @@ router.post("/", async (req, res) => {
       data: { name, description },
     })
 
-    const { id, ...projectWithoutId } = newProject
-    res.status(201).json(projectWithoutId)
+    const { id, publicId, ...projectWithoutId } = newProject
+    const responseData = ProjectGETSchema.safeParse({
+      ...projectWithoutId,
+      id: publicId,
+    })
+
+    if (!responseData.success) {
+      console.error(
+        "Error validating project data for response: ",
+        responseData.error
+      )
+      return res
+        .status(500)
+        .json({ error: "Failed to process project data for response" })
+    }
+
+    res.status(201).json(responseData.data)
   } catch (error) {
     console.error("Error creating project: ", error)
     res.status(500).json({ error: "Failed to create project" })

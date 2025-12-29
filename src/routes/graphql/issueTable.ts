@@ -36,11 +36,6 @@ export async function issueTable(
     },
   })
 
-  const issue = issues[0]
-  if (!issue) {
-    return null
-  }
-
   const response = issues.map((issue) => {
     return {
       assignee: issue.assignee?.publicId || null,

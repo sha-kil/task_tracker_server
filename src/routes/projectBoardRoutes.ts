@@ -1,9 +1,11 @@
 import express from "express"
 import prisma from "src/lib/prisma.js"
-import { ProjectBoardCreateSchema } from "src/schema/projectBoard.js"
+import {
+  ProjectBoardCreateSchema,
+  ProjectBoardGETSchema,
+} from "src/schema/projectBoard.js"
 
 const router = express.Router()
-
 
 router.post("/", async (req, res) => {
   if (req.userId === undefined) {
@@ -14,19 +16,17 @@ router.post("/", async (req, res) => {
   try {
     const projectBoardPostData = ProjectBoardCreateSchema.safeParse(req.body)
     if (!projectBoardPostData.success) {
-      return res
-        .status(400)
-        .json({
-          error: "Invalid project board data",
-          details: projectBoardPostData.error,
-        })
+      console.error("Invalid project board data: ", projectBoardPostData.error)
+      return res.status(400).json({
+        error: "Invalid project board data",
+      })
     }
 
     const project = await prisma.project.findUnique({
-      where: { publicId: projectBoardPostData.data.projectId }
+      where: { publicId: projectBoardPostData.data.projectId },
     })
 
-    if(project === null) {
+    if (project === null) {
       console.error("Project not found: ", projectBoardPostData.data.projectId)
       return res.status(404).json({ error: "Project not found" })
     }
@@ -34,15 +34,33 @@ router.post("/", async (req, res) => {
     const { description, name } = projectBoardPostData.data
     const newProjectBoard = await prisma.projectBoard.create({
       data: { description, name, projectId: project.id },
+      include: {
+        project: true,
+      },
     })
 
-    const { id, projectId, ...projectBoardWithoutId } = newProjectBoard
-    res.status(201).json(projectBoardWithoutId)
+    const {
+      id,
+      publicId,
+      project: projectData,
+      ...projectBoardWithoutId
+    } = newProjectBoard
+    const responseData = ProjectBoardGETSchema.safeParse({
+      ...projectBoardWithoutId,
+      id: newProjectBoard.publicId,
+      projectId: projectData.publicId,
+    })
+
+    if (!responseData.success) {
+      console.error("Error parsing response data: ", responseData.error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+
+    res.status(201).json(responseData.data)
   } catch (error) {
     console.error("Error creating project board: ", error)
     res.status(500).json({ error: "Failed to create project board" })
   }
 })
-
 
 export default router

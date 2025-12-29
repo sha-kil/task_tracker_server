@@ -184,7 +184,7 @@ router.get("/:id", async (req, res) => {
       ...issue,
       assigneeId: assignee?.publicId || null,
       childrenIds: children.map((child) => child.publicId),
-      commentsIds: comments.map((comment) => comment.publicId),
+      commentIds: comments.map((comment) => comment.publicId),
       createdById: creator.publicId,
       id: issue.publicId,
       labelIds: labels.map((label) => label.publicId),

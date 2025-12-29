@@ -7,13 +7,13 @@ const TOKEN_COOKIE_NAME = "auth_token"
 
 export function extractCookieToken(req: Request): string | null {
   const cookieString = req.headers.cookie
-  if(cookieString === undefined) {
+  if (cookieString === undefined) {
     return null
   }
 
   const cookies = cookieString.split("; ").reduce((acc, cookie) => {
     const [name, value] = cookie.split("=")
-    if(name === undefined || value === undefined) {
+    if (name === undefined || value === undefined) {
       return acc
     }
     acc[name] = value
@@ -33,7 +33,7 @@ export function setAuthCookie(res: Response, token: string): void {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 3600000, // 1 hour
-  }) 
+  })
 }
 
 export function clearAuthCookie(res: Response): void {

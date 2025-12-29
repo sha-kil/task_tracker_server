@@ -1,6 +1,6 @@
 import z from "zod"
 
-const ProjectGETSchema = z.object({
+export const ProjectGETSchema = z.object({
   id: z.uuidv7(),
   description: z.string().max(500),
   name: z.string().max(100),

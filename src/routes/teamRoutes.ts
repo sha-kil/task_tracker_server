@@ -39,12 +39,10 @@ router.post("/", async (req, res) => {
       members: members.map((member) => member.publicId),
     })
     if (!responseData.success) {
-      return res
-        .status(500)
-        .json({
-          error: "Failed to parse created team",
-          details: responseData.error,
-        })
+      return res.status(500).json({
+        error: "Failed to parse created team",
+        details: responseData.error,
+      })
     }
 
     return res.status(201).json(responseData.data)
