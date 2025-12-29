@@ -22,7 +22,7 @@ export const UserGETSchema = UserBaseSchema.omit({ password: true })
 
 export const UserCreateSchema = UserBaseSchema.omit({ id: true })
 
-export const UserPUTSchema = UserBaseSchema.omit({
+export const UserPATCHSchema = UserBaseSchema.omit({
   id: true,
   password: true,
   email: true,

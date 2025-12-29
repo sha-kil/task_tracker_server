@@ -1,7 +1,7 @@
 import express from "express"
 import { getAddress } from "src/lib/address.js"
 import prisma from "src/lib/prisma.js"
-import { UserGETSchema, UserPUTSchema } from "src/schema/user.js"
+import { UserGETSchema, UserPATCHSchema } from "src/schema/user.js"
 import type { Request, Response } from "express"
 
 const router = express.Router()
@@ -200,7 +200,7 @@ router.patch("/:userId", async (req: Request, res: Response) => {
         .json({ error: "Forbidden: You can only update your own profile" })
     }
 
-    const validatedUserInput = UserPUTSchema.safeParse(req.body)
+    const validatedUserInput = UserPATCHSchema.safeParse(req.body)
     if (!validatedUserInput.success) {
       console.error("Invalid user data: ", validatedUserInput.error)
       return res.status(400).json({ error: "Invalid user data" })
