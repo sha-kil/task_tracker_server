@@ -32,12 +32,13 @@ const UserBaseSchemaWithoutDefault = UserBaseSchema.omit({
   workPhone: true,
 }).extend({
   addressId: UserBaseSchema.shape.addressId.unwrap(),
-  coverImageUrl: z.uuidv7().nullable(),
+  coverImageUrl: UserBaseSchema.shape.coverImageUrl.unwrap(),
   department: UserBaseSchema.shape.department.unwrap(),
   homePhone: UserBaseSchema.shape.homePhone.unwrap(),
   organization: UserBaseSchema.shape.organization.unwrap(),
   position: UserBaseSchema.shape.position.unwrap(),
   profilePictureUrl: UserBaseSchema.shape.profilePictureUrl.unwrap(),
+  role: UserBaseSchema.shape.role.unwrap(),
   teamId: UserBaseSchema.shape.teamId.unwrap(),
   workPhone: UserBaseSchema.shape.workPhone.unwrap(),
 })

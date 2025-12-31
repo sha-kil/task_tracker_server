@@ -196,7 +196,9 @@ router.patch("/:userId", async (req: Request, res: Response) => {
     await prisma.userProfile.update({
       where: { publicId: req.params.userId },
       data: {
-        ...(address !== null && { addressId: address.id }),
+        ...(validatedUserInput.data.addressId !== undefined && {
+          addressId: address?.id ?? null,
+        }),
         ...(validatedUserInput.data.coverImageUrl !== undefined && {
           coverImageUrl: validatedUserInput.data.coverImageUrl,
         }),
@@ -227,7 +229,9 @@ router.patch("/:userId", async (req: Request, res: Response) => {
         ...(validatedUserInput.data.role !== undefined && {
           role: validatedUserInput.data.role,
         }),
-        ...(team !== null && { teamId: team.id }),
+        ...(validatedUserInput.data.teamId !== undefined && {
+          teamId: team?.id ?? null,
+        }),
         ...(validatedUserInput.data.workPhone !== undefined && {
           workPhone: validatedUserInput.data.workPhone,
         }),
