@@ -1,3 +1,4 @@
+import { UserRole } from "@prismaClient/enums.js"
 import z from "zod"
 
 const UserBaseSchema = z.object({
@@ -14,34 +15,40 @@ const UserBaseSchema = z.object({
   password: z.string().min(8).max(100),
   position: z.string().max(100).nullable().default(null),
   profilePictureUrl: z.string().nullable().default(null),
+  role: z.enum(UserRole).default(UserRole.USER),
   teamId: z.uuidv7().nullable().default(null),
   workPhone: z.string().nullable().default(null),
+})
+
+const UserBaseSchemaWithoutDefault = UserBaseSchema.omit({
+  addressId: true,
+  coverImageUrl: true,
+  department: true,
+  homePhone: true,
+  organization: true,
+  position: true,
+  profilePictureUrl: true,
+  teamId: true,
+  workPhone: true,
+}).extend({
+  addressId: UserBaseSchema.shape.addressId.unwrap(),
+  coverImageUrl: UserBaseSchema.shape.coverImageUrl.unwrap(),
+  department: UserBaseSchema.shape.department.unwrap(),
+  homePhone: UserBaseSchema.shape.homePhone.unwrap(),
+  organization: UserBaseSchema.shape.organization.unwrap(),
+  position: UserBaseSchema.shape.position.unwrap(),
+  profilePictureUrl: UserBaseSchema.shape.profilePictureUrl.unwrap(),
+  role: UserBaseSchema.shape.role.unwrap(),
+  teamId: UserBaseSchema.shape.teamId.unwrap(),
+  workPhone: UserBaseSchema.shape.workPhone.unwrap(),
 })
 
 export const UserGETSchema = UserBaseSchema.omit({ password: true })
 
 export const UserCreateSchema = UserBaseSchema.omit({ id: true })
 
-export const UserPUTSchema = UserBaseSchema.omit({
+export const UserPATCHSchema = UserBaseSchemaWithoutDefault.omit({
   id: true,
   password: true,
   email: true,
-})
-  .partial()
-  .transform((data) => ({
-    ...(data.addressId !== undefined && { addressId: data.addressId }),
-    ...(data.coverImageUrl !== undefined && {
-      coverImageUrl: data.coverImageUrl,
-    }),
-    ...(data.department !== undefined && { department: data.department }),
-    ...(data.firstName !== undefined && { firstName: data.firstName }),
-    ...(data.homePhone !== undefined && { homePhone: data.homePhone }),
-    ...(data.lastName !== undefined && { lastName: data.lastName }),
-    ...(data.lastActive !== undefined && { lastActive: data.lastActive }),
-    ...(data.organization !== undefined && { organization: data.organization }),
-    ...(data.position !== undefined && { position: data.position }),
-    ...(data.profilePictureUrl !== undefined && {
-      profilePictureUrl: data.profilePictureUrl,
-    }),
-    ...(data.workPhone !== undefined && { workPhone: data.workPhone }),
-  }))
+}).partial()

@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER', 'GUEST');
+
+-- CreateEnum
 CREATE TYPE "IssueType" AS ENUM ('EPIC', 'STORY', 'TASK');
 
 -- CreateEnum
@@ -27,6 +30,7 @@ CREATE TABLE "UserProfile" (
     "position" TEXT,
     "profilePictureUrl" TEXT,
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
+    "role" "UserRole" NOT NULL DEFAULT 'USER',
     "teamId" BIGINT,
     "workPhone" TEXT,
 
@@ -219,10 +223,10 @@ CREATE UNIQUE INDEX "IssueLabel_publicId_key" ON "IssueLabel"("publicId");
 CREATE UNIQUE INDEX "ProjectBoard_publicId_key" ON "ProjectBoard"("publicId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "IssueStatus_name_key" ON "IssueStatus"("name");
+CREATE UNIQUE INDEX "IssueStatus_publicId_key" ON "IssueStatus"("publicId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "IssueStatus_publicId_key" ON "IssueStatus"("publicId");
+CREATE UNIQUE INDEX "IssueStatus_name_projectBoardId_key" ON "IssueStatus"("name", "projectBoardId");
 
 -- CreateIndex
 CREATE INDEX "_IssueToIssueLabel_B_index" ON "_IssueToIssueLabel"("B");
