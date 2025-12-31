@@ -13,6 +13,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
 enum IssueType {
   EPIC
   STORY
@@ -49,6 +55,7 @@ model UserProfile {
   position            String?
   profilePictureUrl   String?
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  role                UserRole        @default(USER)
   teamId              BigInt?
   workPhone           String?         @unique
 
