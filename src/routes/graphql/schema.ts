@@ -83,7 +83,7 @@ export const schema = buildSchema(`
   }
 
   type UserHistory {
-    currentValue: String!
+    currentValue: String
     id: ID!
     issue: UserHistoryIssue!
     topic: String!

@@ -13,7 +13,7 @@ export async function commentsWithUser(
     where: {
       issue: {
         publicId: args.issueId,
-      } 
+      },
     },
     include: {
       author: {
@@ -23,11 +23,12 @@ export async function commentsWithUser(
           lastName: true,
           profilePictureUrl: true,
           lastActive: true,
-          userCredential: true
-        } 
+          userCredential: true,
+        },
       },
-      likedBy: true
-    }
+      likedBy: true,
+      parent: true,
+    },
   })
 
   const response = comments.map((comment) => {
@@ -40,7 +41,7 @@ export async function commentsWithUser(
         updatedAt: comment.updatedAt.toISOString(),
         edited: edited,
         likedByUserIds: comment.likedBy.map((user) => user.publicId),
-        parentId: null,
+        parentId: comment.parent ? comment.parent.publicId : null,
         authorId: comment.author.publicId,
       },
       user: {
