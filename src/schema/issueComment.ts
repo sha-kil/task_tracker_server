@@ -5,6 +5,8 @@ export const IssueCommentGETSchema = z.object({
   createdAt: z.iso.datetime(),
   id: z.uuidv7(),
   issueId: z.uuidv7(),
+  likedByUserIds: z.array(z.uuidv7()).default([]),
+  parentId: z.uuidv7().nullable().default(null),
   text: z.string(),
   updatedAt: z.iso.datetime(),
 })
@@ -12,6 +14,7 @@ export const IssueCommentGETSchema = z.object({
 export const IssueCommentCreateSchema = IssueCommentGETSchema.omit({
   createdAt: true,
   id: true,
+  likedByUserIds: true,
   updatedAt: true,
   authorId: true,
 })

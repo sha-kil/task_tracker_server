@@ -29,19 +29,26 @@ export async function userIssueList(
     } 
   })
 
-  return issues.map((issue) => ({
-    assignee: issue.assignee?.publicId || null,
-    childrenIds: issue.children.map((child) => child.publicId),
-    createdAt: issue.createdAt.toISOString(),
-    createdById: userProfile.publicId,
-    id: issue.publicId,
-    labels: issue.labels.map((label) => label.name),
-    priority: issue.priority,
-    status: {
-      id: issue.status.publicId,
-      name: issue.status.name,
-      color: issue.status.color,
-    },
-    title: issue.title,
-  }))
+  return issues.map((issue) => {
+    const assignee = issue.assignee
+      ? [issue.assignee.firstName, issue.assignee.lastName]
+          .filter(Boolean)
+          .join(" ") || null
+      : null
+    return {
+      assignee,
+      childrenIds: issue.children.map((child) => child.publicId),
+      createdAt: issue.createdAt.toISOString(),
+      createdById: userProfile.publicId,
+      id: issue.publicId,
+      labels: issue.labels.map((label) => label.name),
+      priority: issue.priority,
+      status: {
+        id: issue.status.publicId,
+        name: issue.status.name,
+        color: issue.status.color,
+      },
+      title: issue.title,
+    }
+  })
 }

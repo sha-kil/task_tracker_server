@@ -108,10 +108,13 @@ model IssueComment {
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
   text                String
   updatedAt           DateTime        @default(now())
+  parentId            BigInt?
 
   author              UserProfile     @relation(fields: [authorId], references: [id])
   issue               Issue           @relation(fields: [issueId], references: [id])
   likedBy            UserProfile[]   @relation("IssueCommentLikes")
+  parent              IssueComment?   @relation("IssueCommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies            IssueComment[]  @relation("IssueCommentReplies")
 }
 
 model Address {

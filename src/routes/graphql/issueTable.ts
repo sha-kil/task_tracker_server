@@ -1,7 +1,7 @@
 import prisma from "src/lib/prisma.js"
 
 export async function issueTable(
-  _args: { ids: string[] },
+  args: { ids: string[] | null },
   context: { userId?: bigint }
 ) {
   const userId = context.userId
@@ -9,10 +9,18 @@ export async function issueTable(
     throw new Error("Unauthorized")
   }
 
-  const issues = await prisma.issue.findMany({
+  const condition = {
     where: {
-      OR: [{ createdById: userId }, { assigneeId: userId }],
+      ...(args.ids !== null
+        ? { publicId: { in: args.ids } }
+        : {
+            OR: [{ createdById: userId }, { assigneeId: userId }],
+          }),
     },
+  }
+
+  const issues = await prisma.issue.findMany({
+    ...condition,
     include: {
       status: {
         select: {
@@ -37,8 +45,13 @@ export async function issueTable(
   })
 
   const response = issues.map((issue) => {
+    let assignee: string | null = null
+    if (issue.assignee !== null) {
+      assignee = `${issue.assignee.firstName} ${issue.assignee.lastName}`
+    }
+
     return {
-      assignee: issue.assignee?.publicId || null,
+      assignee,
       childrenIds: issue.children.map((child) => child.publicId),
       createdAt: issue.createdAt.toISOString(),
       createdById: issue.creator.publicId,

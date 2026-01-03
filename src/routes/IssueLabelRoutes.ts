@@ -5,6 +5,7 @@ import {
   IssueLabelGETSchema,
 } from "src/schema/IssueLabel.js"
 import type { Request, Response } from "express"
+import { HttpError } from "src/lib/httpError.js"
 
 const router = Router()
 
@@ -27,6 +28,67 @@ router.get("/", async (req: Request, res: Response) => {
 
   console.error("Required parameter missing: projectId or issueId")
   return res.status(400).json({ error: "required parameter missing" })
+})
+
+router.get("/ids/:ids", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const idsParam = req.params.ids?.trim()
+    if (!idsParam) {
+      throw new HttpError(400, "Missing 'ids' parameter")
+    }
+
+    const ids = idsParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0)
+    if (ids.length === 0) {
+      throw new HttpError(400, "No valid IDs provided")
+    }
+
+    const issueLabels = await prisma.issueLabel.findMany({
+      where: {
+        publicId: {
+          in: ids,
+        },
+        project: {
+          user: {
+            some: {
+              id: req.userId,
+            },
+          },
+        },
+      },
+      include: {
+        project: true,
+      },
+    })
+
+    const responseData = []
+    for (const label of issueLabels) {
+      const parsedLabel = IssueLabelGETSchema.safeParse({
+        id: label.publicId,
+        name: label.name,
+        color: label.color,
+        projectId: label.project.publicId,
+      })
+      if (parsedLabel.success) {
+        responseData.push(parsedLabel.data)
+      } else {
+        console.error("Parsed Label:", parsedLabel.error)
+      }
+    }
+
+    return res.status(200).json(responseData)
+  } catch (error: HttpError | unknown) {
+    console.error(error instanceof Error ? error.message : error)
+    return res
+      .status(error instanceof HttpError ? error.statusCode : 500)
+      .json({ error: "Failed to fetch issue labels by IDs" })
+  }
 })
 
 router.post("/", async (req: Request, res: Response) => {
