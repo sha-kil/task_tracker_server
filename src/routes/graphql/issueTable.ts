@@ -47,7 +47,10 @@ export async function issueTable(
   const response = issues.map((issue) => {
     let assignee: string | null = null
     if (issue.assignee !== null) {
-      assignee = `${issue.assignee.firstName} ${issue.assignee.lastName}`
+      const assigneeName = [issue.assignee.firstName, issue.assignee.lastName]
+        .filter(Boolean)
+        .join(" ")
+      assignee = assigneeName
     }
 
     return {
