@@ -252,7 +252,12 @@ router.patch("/:id", async (req: Request, res: Response) => {
     let projectId: bigint = existingIssue.projectId
     if (issueUpdateData.data.projectId !== undefined) {
       const project = await prisma.project.findUnique({
-        where: { publicId: issueUpdateData.data.projectId },
+        where: {
+          publicId: issueUpdateData.data.projectId,
+          user: {
+            some: { id: req.userId },
+          },
+        },
       })
       if (project === null) {
         throw new HttpError(400, "Project not found")
