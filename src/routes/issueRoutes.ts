@@ -330,6 +330,23 @@ router.patch("/:id", async (req: Request, res: Response) => {
         if (parentIssue === null) {
           throw new HttpError(400, "Parent issue not found")
         }
+
+        // Detect circular parent relationship by traversing ancestor chain
+        // (assuming existing chain is acyclic)
+        let currentAncestor = parentIssue
+        while (currentAncestor.parentId !== null) {
+          const ancestor = await prisma.issue.findUnique({
+            where: { id: currentAncestor.parentId },
+          })
+          if (ancestor === null) {
+            break
+          }
+          if (ancestor.publicId === req.params.id) {
+            throw new HttpError(400, "Circular parent relationship detected")
+          }
+          currentAncestor = ancestor
+        }
+
         parentId = parentIssue.id
       }
     }
