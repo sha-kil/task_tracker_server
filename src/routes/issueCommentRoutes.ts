@@ -220,16 +220,13 @@ router.patch("/:id", async (req: Request, res: Response) => {
           }),
 
         ...(liked !== undefined && {
-          likedBy: {
-            set: liked
-              ? [
-                  ...existingComment.likedBy.map((user) => ({ id: user.id })),
-                  { id: req.userId },
-                ]
-              : existingComment.likedBy
-                  .filter((user) => user.id !== req.userId)
-                  .map((user) => ({ id: user.id })),
-          },
+          likedBy: liked
+            ? {
+                connect: { id: req.userId },
+              }
+            : {
+                disconnect: { id: req.userId },
+              },
         }),
         updatedAt: new Date(),
       },
