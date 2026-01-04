@@ -6,6 +6,8 @@ import {
   IssueCommentGETSchema,
 } from "src/schema/issueComment.js"
 import type { Request, Response } from "express"
+import { HttpError } from "src/lib/httpError.js"
+import { getUserByCredentialId } from "src/lib/userProfile.js"
 
 const router = Router()
 
@@ -58,55 +60,110 @@ router.get("/:id", async (req: Request, res: Response) => {
 
 // Create a new comment on an issue
 router.post("/", async (req, res) => {
-  if (req.userId === undefined) {
-    console.error("Unauthorized: userId is undefined")
-    return res.status(403).json({ error: "Forbidden" })
-  }
-
   try {
-    const issueCommentCreationData = IssueCommentCreateSchema.safeParse(req.body)
-    if (!issueCommentCreationData.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid comment data", details: issueCommentCreationData.error })
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
     }
 
-    const commentIssue = await getIssue(issueCommentCreationData.data.issueId) 
+    const currentUser = await getUserByCredentialId(req.userId)
+
+    const issueCommentCreationData = IssueCommentCreateSchema.safeParse(
+      req.body
+    )
+    if (!issueCommentCreationData.success) {
+      console.error("Invalid comment data:", issueCommentCreationData.error)
+      throw new HttpError(400, "Invalid comment data")
+    }
+
+    const commentIssue = await getIssue(issueCommentCreationData.data.issueId)
     if (commentIssue === null) {
       console.error("Issue not found:", issueCommentCreationData.data.issueId)
-      return res.status(400).json({ error: "Issue not found" })
+      throw new HttpError(400, "Issue not found")
     }
 
-    const { author, issue, id, ...newIssueComment } = await prisma.issueComment.create({
-      data: {
-        issueId: commentIssue.id,
-        authorId: req.userId,
-        text: issueCommentCreationData.data.text,
-      },
-      include: {
-        author: true,
-        issue: true
+    if (issueCommentCreationData.data.parentId !== null) {
+      const parentComment = await prisma.issueComment.findUnique({
+        where: {
+          publicId: issueCommentCreationData.data.parentId,
+          issue: {
+            publicId: issueCommentCreationData.data.issueId,
+          },
+        },
+      })
+
+      if (parentComment === null) {
+        throw new HttpError(400, "Parent comment not found")
       }
-    })
+
+      // Check for cyclic parent comment references
+      let currentParent = parentComment
+      while (currentParent.parentId !== null) {
+        const nextParent = await prisma.issueComment.findUnique({
+          where: { id: currentParent.parentId },
+        })
+
+        if (nextParent === null) {
+          break
+        }
+        if (nextParent.id === parentComment.id) {
+          throw new HttpError(400, "Cyclic parent comment reference detected")
+        }
+
+        currentParent = nextParent
+      }
+    }
+
+    const { author, issue, id, parent, ...newIssueComment } =
+      await prisma.issueComment.create({
+        data: {
+          text: issueCommentCreationData.data.text,
+          author: {
+            connect: { publicId: currentUser.id },
+          },
+          issue: {
+            connect: { publicId: issueCommentCreationData.data.issueId },
+          },
+          ...(issueCommentCreationData.data.parentId !== null && {
+            parent: {
+              connect: { publicId: issueCommentCreationData.data.parentId },
+            },
+          }),
+        },
+        include: {
+          author: true,
+          issue: true,
+          parent: true,
+          likedBy: true,
+        },
+      })
 
     const responseData = IssueCommentGETSchema.safeParse({
-      ...newIssueComment,
       authorId: author.publicId,
       createdAt: newIssueComment.createdAt.toISOString(),
       id: newIssueComment.publicId,
       issueId: issueCommentCreationData.data.issueId,
+      likedByUserIds: newIssueComment.likedBy.map((user) => user.publicId),
+      parentId: parent?.publicId ?? null,
+      text: newIssueComment.text,
       updatedAt: newIssueComment.updatedAt.toISOString(),
     })
 
-    if(!responseData.success){
+    if (!responseData.success) {
       console.error("Failed to parse created comment:", responseData.error)
-      return  res.status(500).json({ error: "Failed to parse created comment" })
+      throw new HttpError(500, "Failed to parse created comment")
     }
 
     return res.status(201).json(responseData.data)
-  } catch (error) {
-    console.error(error)
-    return res.status(500).json({ error: "Internal server error" })
+  } catch (error: HttpError | unknown) {
+    console.error(
+      error instanceof HttpError ? `HttpError: ${error.message}` : error
+    )
+    return res
+      .status(error instanceof HttpError ? error.statusCode : 500)
+      .json({
+        error:
+          error instanceof HttpError ? error.message : "Internal server error",
+      })
   }
 })
 

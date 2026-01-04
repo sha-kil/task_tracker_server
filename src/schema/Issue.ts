@@ -7,10 +7,13 @@ export const IssueGETSchema = z.object({
   createdAt: z.iso.datetime(),
   createdById: z.uuidv7(),
   description: z.string(),
-  dueDate: z.iso.datetime({
-    message: "Due date must be a valid ISO datetime string",
-    offset: true
-  }).nullable().default(null),
+  dueDate: z.iso
+    .datetime({
+      message: "Due date must be a valid ISO datetime string",
+      offset: true,
+    })
+    .nullable()
+    .default(null),
   id: z.uuidv7(),
   labelIds: z.array(z.uuidv7()).default([]),
   parentId: z.uuidv7().nullable().default(null),
@@ -35,3 +38,28 @@ export const IssueCreateSchema = IssueGETSchema.omit({
   statusOptionIds: true,
   updatedAt: true,
 })
+
+export const IssueUpdateSchema = IssueGETSchema.omit({
+  commentIds: true,
+  createdAt: true,
+  createdById: true,
+  id: true,
+  type: true,
+  updatedAt: true,
+})
+  .extend({
+    assigneeId: z.uuidv7().nullable(),
+    childrenIds: z.array(z.uuidv7()),
+    dueDate: z.iso
+      .datetime({
+        message: "Due date must be a valid ISO datetime string",
+        offset: true,
+      })
+      .nullable(),
+    labelIds: z.array(z.uuidv7()),
+    parentId: z.uuidv7().nullable(),
+    projectBoardId: z.uuidv7().nullable(),
+    startDate: z.iso.datetime().nullable(),
+    statusOptionIds: z.array(z.uuidv7()),
+  })
+  .partial()

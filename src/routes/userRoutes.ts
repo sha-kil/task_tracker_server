@@ -1,71 +1,14 @@
 import express from "express"
 import { getAddress } from "src/lib/address.js"
 import prisma from "src/lib/prisma.js"
-import { UserGETSchema, UserPATCHSchema } from "src/schema/user.js"
+import { UserPATCHSchema } from "src/schema/user.js"
 import type { Request, Response } from "express"
-import type { UserCredential, UserProfile } from "@prismaClient/client.js"
 import { HttpError } from "src/lib/httpError.js"
+import { getUserByCredentialId, parseUser } from "src/lib/userProfile.js"
 
 const router = express.Router()
 
 // user is create in authRoutes.ts through registration
-
-function parseUser(
-  credential: UserCredential,
-  profile: UserProfile,
-  addressId: string | null,
-  teamId: string | null
-) {
-  const parsedUser = UserGETSchema.safeParse({
-    addressId: addressId,
-    coverImageUrl: profile.coverImageUrl,
-    department: profile.department,
-    email: credential.email,
-    firstName: profile.firstName,
-    homePhone: profile.homePhone,
-    id: profile.publicId,
-    lastActive: profile.lastActive.toISOString(),
-    lastName: profile.lastName,
-    organization: profile.organization,
-    position: profile.position,
-    profilePictureUrl: profile.profilePictureUrl,
-    role: profile.role,
-    teamId: teamId,
-    workPhone: profile.workPhone,
-  })
-
-  if (!parsedUser.success) {
-    throw new HttpError(500, parsedUser.error.message)
-  }
-
-  return parsedUser.data
-}
-
-export async function getUserByCredentialId(userId: bigint) {
-  const user = await prisma.userCredential.findUnique({
-    where: { id: userId },
-    include: { profile: { include: { team: true, address: true } } },
-  })
-
-  if (user === null || user.profile === null) {
-    throw new HttpError(404, "User not found")
-  }
-
-  const { profile, ...credential } = user
-  const team = profile.team
-  const address = profile.address
-
-  try {
-    return parseUser(
-      credential,
-      profile,
-      address?.publicId ?? null,
-      team?.publicId ?? null
-    )
-  } catch (error) {
-    throw new HttpError(500, "Failed to parse user data: " + error)
-  }
-}
 
 export async function getUserByProfilePublicId(publicId: string) {
   const userProfile = await prisma.userProfile.findUnique({
