@@ -81,6 +81,38 @@ router.post("/", async (req, res) => {
       throw new HttpError(400, "Issue not found")
     }
 
+    if (issueCommentCreationData.data.parentId !== null) {
+      const parentComment = await prisma.issueComment.findUnique({
+        where: {
+          publicId: issueCommentCreationData.data.parentId,
+          issue: {
+            publicId: issueCommentCreationData.data.issueId,
+          },
+        },
+      })
+
+      if (parentComment === null) {
+        throw new HttpError(400, "Parent comment not found")
+      }
+
+      // Check for cyclic parent comment references
+      let currentParent = parentComment
+      while (currentParent.parentId !== null) {
+        const nextParent = await prisma.issueComment.findUnique({
+          where: { id: currentParent.parentId },
+        })
+
+        if (nextParent === null) {
+          break
+        }
+        if (nextParent.id === parentComment.id) {
+          throw new HttpError(400, "Cyclic parent comment reference detected")
+        }
+
+        currentParent = nextParent
+      }
+    }
+
     const { author, issue, id, parent, ...newIssueComment } =
       await prisma.issueComment.create({
         data: {
