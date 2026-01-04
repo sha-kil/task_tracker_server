@@ -168,7 +168,6 @@ router.post("/", async (req, res) => {
   }
 })
 
-// currently updates only text of the comment
 router.patch("/:id", async (req: Request, res: Response) => {
   try {
     if (req.userId === undefined) {
