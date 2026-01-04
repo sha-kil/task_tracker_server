@@ -18,3 +18,11 @@ export const IssueCommentCreateSchema = IssueCommentGETSchema.omit({
   updatedAt: true,
   authorId: true,
 })
+
+export const IssueCommentUpdateSchema = z
+  .object({
+    text: z.string(),
+    likedByUserIds: z.array(z.uuidv7()),
+  })
+  .partial()
+

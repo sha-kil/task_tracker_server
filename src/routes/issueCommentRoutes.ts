@@ -4,6 +4,7 @@ import prisma from "src/lib/prisma.js"
 import {
   IssueCommentCreateSchema,
   IssueCommentGETSchema,
+  IssueCommentUpdateSchema,
 } from "src/schema/issueComment.js"
 import type { Request, Response } from "express"
 import { HttpError } from "src/lib/httpError.js"
@@ -154,6 +155,103 @@ router.post("/", async (req, res) => {
     }
 
     return res.status(201).json(responseData.data)
+  } catch (error: HttpError | unknown) {
+    console.error(
+      error instanceof HttpError ? `HttpError: ${error.message}` : error
+    )
+    return res
+      .status(error instanceof HttpError ? error.statusCode : 500)
+      .json({
+        error:
+          error instanceof HttpError ? error.message : "Internal server error",
+      })
+  }
+})
+
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const commentId = req.params.id
+    if (commentId === undefined) {
+      throw new HttpError(400, "Comment ID is required")
+    }
+
+    const existingComment = await prisma.issueComment.findUnique({
+      where: {
+        publicId: commentId,
+      },
+      include: {
+        likedBy: true,
+        author: {
+          include: {
+            userCredential: true,
+          },
+        },
+      },
+    })
+
+    if (existingComment === null) {
+      throw new HttpError(404, "Comment not found or access denied")
+    }
+
+    const commentOwner = existingComment.author.userCredential.id === req.userId
+
+    const updateData = IssueCommentUpdateSchema.safeParse(req.body)
+    if (!updateData.success) {
+      throw new HttpError(400, "Invalid update data")
+    }
+
+    // determine whether the current user wants to like or unlike based on likedByUserIds
+    const liked = updateData.data.likedByUserIds
+      ? updateData.data.likedByUserIds.includes(existingComment.author.publicId)
+      : undefined
+
+    const updatedComment = await prisma.issueComment.update({
+      where: { publicId: commentId },
+      data: {
+        // to change text only if the requester is the comment owner
+        ...(updateData.data.text !== undefined &&
+          commentOwner && {
+            text: updateData.data.text,
+          }),
+
+        ...(liked !== undefined && {
+          likedBy: liked
+            ? {
+                connect: { id: req.userId },
+              }
+            : {
+                disconnect: { id: req.userId },
+              },
+        }),
+        updatedAt: new Date(),
+      },
+      include: {
+        author: true,
+        issue: true,
+        likedBy: true,
+        parent: true,
+      },
+    })
+
+    const responseData = IssueCommentGETSchema.safeParse({
+      authorId: updatedComment.author.publicId,
+      createdAt: updatedComment.createdAt.toISOString(),
+      id: updatedComment.publicId,
+      issueId: updatedComment.issue.publicId,
+      likedByUserIds: updatedComment.likedBy.map((user) => user.publicId),
+      parentId: updatedComment.parent?.publicId ?? null,
+      text: updatedComment.text,
+      updatedAt: updatedComment.updatedAt.toISOString(),
+    })
+    if (!responseData.success) {
+      throw new HttpError(500, "Failed to parse updated comment")
+    }
+
+    return res.status(200).json(responseData.data)
   } catch (error: HttpError | unknown) {
     console.error(
       error instanceof HttpError ? `HttpError: ${error.message}` : error
