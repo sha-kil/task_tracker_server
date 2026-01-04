@@ -204,7 +204,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
       throw new HttpError(400, "Invalid update data")
     }
 
-    // can only like / unlike when logged in
+    // determine whether the current user wants to like or unlike based on likedByUserIds
     const liked = updateData.data.likedByUserIds
       ? updateData.data.likedByUserIds.includes(existingComment.author.publicId)
       : undefined
