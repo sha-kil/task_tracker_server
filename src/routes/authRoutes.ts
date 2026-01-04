@@ -5,11 +5,11 @@ import { env } from "src/config/env.js"
 import prisma from "src/lib/prisma.js"
 import { clearAuthCookie, setAuthCookie } from "src/lib/token.js"
 import { UserCreateSchema } from "src/schema/user.js"
-import { getUserByCredentialId } from "src/routes/userRoutes.js"
 import type { Request, Response } from "express"
 import { getAddress } from "src/lib/address.js"
 import { getTeam } from "src/lib/team.js"
 import { HttpError } from "src/lib/httpError.js"
+import { getUserByCredentialId } from "src/lib/userProfile.js"
 
 const router = express.Router()
 

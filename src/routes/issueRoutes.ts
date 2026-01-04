@@ -240,10 +240,24 @@ router.patch("/:id", async (req: Request, res: Response) => {
     }
 
     const existingIssue = await prisma.issue.findUnique({
-      where: { publicId: req.params.id },
+      where: {
+        publicId: req.params.id,
+        project: { user: { some: { id: req.userId } } },
+      },
     })
     if (existingIssue === null) {
       throw new HttpError(404, "Issue not found")
+    }
+
+    let projectId: bigint = existingIssue.projectId
+    if (issueUpdateData.data.projectId !== undefined) {
+      const project = await prisma.project.findUnique({
+        where: { publicId: issueUpdateData.data.projectId },
+      })
+      if (project === null) {
+        throw new HttpError(400, "Project not found")
+      }
+      projectId = project.id
     }
 
     let assigneeId: bigint | null | undefined = undefined
@@ -252,7 +266,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
         assigneeId = null
       } else {
         const assignee = await prisma.userProfile.findUnique({
-          where: { publicId: issueUpdateData.data.assigneeId },
+          where: {
+            publicId: issueUpdateData.data.assigneeId,
+            project: { some: { id: projectId } },
+          },
         })
         if (assignee === null) {
           throw new HttpError(400, "Assignee not found")
@@ -270,6 +287,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
       const children = await prisma.issue.findMany({
         where: {
           publicId: { in: issueUpdateData.data.childrenIds },
+          project: { id: projectId },
         },
       })
 
@@ -285,6 +303,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
       const labels = await prisma.issueLabel.findMany({
         where: {
           publicId: { in: issueUpdateData.data.labelIds },
+          project: { id: projectId },
         },
       })
       if (labels.length !== issueUpdateData.data.labelIds.length) {
@@ -303,23 +322,16 @@ router.patch("/:id", async (req: Request, res: Response) => {
         }
 
         const parentIssue = await prisma.issue.findUnique({
-          where: { publicId: issueUpdateData.data.parentId },
+          where: {
+            publicId: issueUpdateData.data.parentId,
+            project: { id: projectId },
+          },
         })
         if (parentIssue === null) {
           throw new HttpError(400, "Parent issue not found")
         }
         parentId = parentIssue.id
       }
-    }
-    let projectId: bigint | undefined = undefined
-    if (issueUpdateData.data.projectId !== undefined) {
-      const project = await prisma.project.findUnique({
-        where: { publicId: issueUpdateData.data.projectId },
-      })
-      if (project === null) {
-        throw new HttpError(400, "Project not found")
-      }
-      projectId = project.id
     }
 
     let projectBoardId: bigint | null | undefined = undefined
@@ -328,7 +340,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
         projectBoardId = null
       } else {
         const projectBoard = await prisma.projectBoard.findUnique({
-          where: { publicId: issueUpdateData.data.projectBoardId },
+          where: {
+            publicId: issueUpdateData.data.projectBoardId,
+            project: { id: projectId },
+          },
         })
         if (projectBoard === null) {
           throw new HttpError(400, "Project board not found")
@@ -340,7 +355,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
     let statusId: bigint | undefined = undefined
     if (issueUpdateData.data.statusId !== undefined) {
       const status = await prisma.issueStatus.findUnique({
-        where: { publicId: issueUpdateData.data.statusId },
+        where: {
+          publicId: issueUpdateData.data.statusId,
+          projectBoardId: projectBoardId ?? null,
+        },
       })
       if (status === null) {
         throw new HttpError(400, "Status not found")
