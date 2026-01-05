@@ -1,10 +1,9 @@
 import prisma from "src/lib/prisma.js"
 import { UserGETSchema } from "src/schema/user.js"
 import { z } from "zod"
-import type { Request, Response } from "express"
 
 export async function updateUserWithAddress(
-  args: { inputData: any },
+  args: { inputData: z.infer<typeof UserWithAddressSchema> },
   context: { userId?: bigint; req: Request; res: Response }
 ) {
   if (context.userId === undefined) {
@@ -47,29 +46,9 @@ export async function updateUserWithAddress(
     ...addressInput
   } = input.data
 
-  const addressInputData = {
-        ...(addressInput.apartmentNumber !== undefined && {
-          apartmentNumber: addressInput.apartmentNumber,
-        }),
-        ...(addressInput.houseNumber !== undefined && {
-          houseNumber: addressInput.houseNumber,
-        }),
-        ...(addressInput.street !== undefined && {
-          street: addressInput.street,
-        }),
-        ...(addressInput.city !== undefined && {
-          city: addressInput.city,
-        }),
-        ...(addressInput.state !== undefined && {
-          state: addressInput.state,
-        }),
-        ...(addressInput.zipCode !== undefined && {
-          zipCode: addressInput.zipCode,
-        }),
-        ...(addressInput.country !== undefined && {
-          country: addressInput.country,
-        }),
-      }
+  const addressInputData = Object.fromEntries(
+    Object.entries(addressInput).filter(([, value]) => value !== undefined)
+  )
 
   const hasAddressInput = Object.keys(addressInputData).length > 0
   if (userProfile.address !== null) {
@@ -78,7 +57,8 @@ export async function updateUserWithAddress(
       data: addressInputData,
     })
   } else if (hasAddressInput) {
-    throw new Error("Address data provided but no existing address found") 
+    // only update is allowed. addresses must be created separately
+    throw new Error("Address must be created separately before updating")
   }
 
   const userWithAddress = await prisma.userProfile.update({
@@ -103,11 +83,6 @@ export async function updateUserWithAddress(
       team: true,
     },
   })
-
-  if (userWithAddress === null || userWithAddress.userCredential === null) {
-    console.error("User not found for ID:", userId)
-    throw new Error("User not found")
-  }
 
   const { userCredential, address, team, ...rest } = userWithAddress
   const fetchedUser = {
@@ -163,7 +138,7 @@ const UserWithAddressSchema = z
   .object({
     firstName: z.string(),
     lastName: z.string(),
-    profilePictureUrl: z.url(),
+    profilePictureUrl: z.string(),
     position: z.string(),
     department: z.string(),
     organization: z.string(),
