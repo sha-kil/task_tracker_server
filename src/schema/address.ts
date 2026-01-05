@@ -16,3 +16,6 @@ export const AddressCreateSchema = AddressGETSchema.omit({
 }).extend({
   userId: z.uuidv7(),
 })
+
+export const AddressUpdateSchema = AddressGETSchema.omit({ id: true }).partial()
+ 

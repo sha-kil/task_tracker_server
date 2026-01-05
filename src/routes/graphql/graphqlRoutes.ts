@@ -10,7 +10,7 @@ router.all("/", (req, res, next) => {
   const handler = createHandler({
     schema,
     rootValue: resolvers,
-    context: { userId },
+    context: { userId, req, res },
     formatError: (err) => {
       console.error(err)
       return err
