@@ -12,3 +12,7 @@ export const IssueStatusCreateSchema = IssueStatusGETSchema.omit({
 }).extend({
   projectBoardId: z.uuidv7(),
 })
+
+export const IssueStatusUpdateSchema = IssueStatusCreateSchema.omit({
+  projectBoardId: true,
+}).partial()
