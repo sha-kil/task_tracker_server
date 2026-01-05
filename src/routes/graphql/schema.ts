@@ -98,7 +98,6 @@ export const schema = buildSchema(`
     position: String
     department: String
     organization: String
-    lastActive: String
     teamId: String
     apartmentNumber: String
     houseNumber: String

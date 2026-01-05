@@ -59,6 +59,8 @@ export async function updateUserWithAddress(
   } else if (hasAddressInput) {
     // only update is allowed. addresses must be created separately
     throw new Error("Address must be created separately before updating")
+  } else {
+    console.log("No address data provided; skipping address update")
   }
 
   const userWithAddress = await prisma.userProfile.update({
