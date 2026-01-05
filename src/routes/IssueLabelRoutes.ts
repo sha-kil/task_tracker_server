@@ -3,6 +3,7 @@ import prisma from "src/lib/prisma.js"
 import {
   IssueLabelCreateSchema,
   IssueLabelGETSchema,
+  IssueLabelUpdateSchema,
 } from "src/schema/IssueLabel.js"
 import type { Request, Response } from "express"
 import { HttpError } from "src/lib/httpError.js"
@@ -141,6 +142,67 @@ router.post("/", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Failed to create issue label:", error)
     res.status(500).json({ error: "Failed to create issue label" })
+  }
+})
+
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const issueLabelId = req.params.id
+    if (issueLabelId === undefined) {
+      throw new HttpError(400, "Missing issue label ID parameter")
+    }
+
+    const updateData = IssueLabelUpdateSchema.safeParse(req.body)
+    if (!updateData.success) {
+      throw new HttpError(400, "Invalid request data")
+    }
+
+    const updatedIssueLabel = await prisma.issueLabel.update({
+      where: {
+        publicId: issueLabelId,
+        project: {
+          user: {
+            some: {
+              id: req.userId,
+            },
+          },
+        },
+      },
+      data: {
+        ...(updateData.data.name !== undefined && {
+          name: updateData.data.name,
+        }),
+        ...(updateData.data.color !== undefined && {
+          color: updateData.data.color,
+        }),
+      },
+      include: {
+        project: true,
+      },
+    })
+
+    const responseData = IssueLabelGETSchema.safeParse({
+      id: updatedIssueLabel.publicId,
+      name: updatedIssueLabel.name,
+      color: updatedIssueLabel.color,
+      projectId: updatedIssueLabel.project.publicId,
+    })
+
+    if (!responseData.success) {
+      throw new HttpError(500, "Failed to parse response data")
+    }
+
+    return res.status(200).json(responseData.data)
+  } catch (error: HttpError | unknown) {
+    const httpError = error instanceof HttpError
+    console.error(httpError ? error.message : error)
+    return res.status(httpError ? error.statusCode : 500).json({
+      error: httpError ? error.message : "Failed to update issue label",
+    })
   }
 })
 

@@ -8,3 +8,7 @@ export const IssueLabelGETSchema = z.object({
 })
 
 export const IssueLabelCreateSchema = IssueLabelGETSchema.omit({ id: true })
+
+export const IssueLabelUpdateSchema = IssueLabelCreateSchema.omit({
+  projectId: true,
+}).partial()
