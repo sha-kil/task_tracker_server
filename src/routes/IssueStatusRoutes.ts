@@ -190,9 +190,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
       throw new HttpError(400, "Invalid request data")
     }
 
-    if (Object.keys(data).length === 0) {
-      throw new HttpError(400, "No fields to update")
-    }
+
 
     const existingStatus = await prisma.issueStatus.findUnique({
       where: {
@@ -213,6 +211,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
     const dataToUpdate = Object.fromEntries(
       Object.entries(data).filter(([_, value]) => value !== undefined)
     )
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      throw new HttpError(400, "No fields to update")
+    }
 
     const updatedStatus = await prisma.issueStatus.update({
       where: {
