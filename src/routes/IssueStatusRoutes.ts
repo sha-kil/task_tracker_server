@@ -103,17 +103,15 @@ router.get("/options/:issueId", async (req: Request, res: Response) => {
   return res.status(200).json(response)
 })
 
-router.post("/", async (req, res) => {
-  if (req.userId === undefined) {
-    console.error("Unauthorized access attempt to create issue status")
-    return res.status(403).json({ error: "Forbidden" })
-  }
-
+router.post("/", async (req: Request, res: Response) => {
   try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
     const { success, data, error } = IssueStatusCreateSchema.safeParse(req.body)
     if (!success) {
-      console.error("Invalid request data:", error)
-      return res.status(400).json({ error: "Invalid request data" })
+      console.error("Invalid request data: ", error)
+      throw new HttpError(400, "Invalid request data")
     }
 
     // verify project exists and user has access
@@ -129,8 +127,7 @@ router.post("/", async (req, res) => {
     })
 
     if (projectBoard === null) {
-      console.error("Invalid project board ID:", data.projectBoardId)
-      return res.status(400).json({ error: "Invalid project board ID" })
+      throw new HttpError(400, "Invalid project board ID")
     }
 
     const issueStatus = await prisma.issueStatus.create({
@@ -157,19 +154,16 @@ router.post("/", async (req, res) => {
       projectBoardId: projectBoardData?.publicId ?? null,
     })
     if (!parsedResponse.success) {
-      console.error(
-        "Failed to parse created issue status:",
-        parsedResponse.error
-      )
-      return res.status(500).json({
-        error: "Failed to parse created issue status",
-      })
+      throw new HttpError(500, "Failed to parse created issue status")
     }
 
     return res.status(201).json(parsedResponse.data)
-  } catch (error) {
-    console.error("Failed to create issue status: ", error)
-    return res.status(500).json({ error: "Failed to create issue status" })
+  } catch (error: HttpError | unknown) {
+    const httpError = error instanceof HttpError
+    console.error(httpError ? error.message : error)
+    return res.status(httpError ? error.statusCode : 500).json({
+      error: httpError ? error.message : "Failed to create issue status",
+    })
   }
 })
 
