@@ -137,7 +137,9 @@ router.patch("/:id", async (req: Request, res: Response) => {
     console.error(showDetailedError ? error.message : error)
     res
       .status(showDetailedError ? error.statusCode : 500)
-      .json(showDetailedError ? error.message : "Failed to update address")
+      .json({
+        error: showDetailedError ? error.message : "Failed to update address",
+      })
   }
 })
 
