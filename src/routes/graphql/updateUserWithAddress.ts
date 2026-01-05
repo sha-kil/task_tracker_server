@@ -25,7 +25,7 @@ export async function updateUserWithAddress(
     throw new Error("User not found")
   }
 
-  if(context.userId !== userProfile.userCredential.id) {
+  if (context.userId !== userProfile.userCredential.id) {
     throw new Error("Forbidden")
   }
 
