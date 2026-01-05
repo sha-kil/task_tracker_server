@@ -4,9 +4,15 @@ import { getProjectBoard } from "src/lib/projectBoard.js"
 import {
   IssueStatusCreateSchema,
   IssueStatusGETSchema,
+  IssueStatusUpdateSchema,
 } from "src/schema/IssueStatus.js"
 import type { Request, Response } from "express"
-import { getCurrentIssueStatusByIssueId, getDefaultIssueStatuses, getIssueStatusOptions } from "src/lib/issueStatus.js"
+import {
+  getCurrentIssueStatusByIssueId,
+  getDefaultIssueStatuses,
+  getIssueStatusOptions,
+} from "src/lib/issueStatus.js"
+import { HttpError } from "src/lib/httpError.js"
 
 const router = Router()
 
@@ -92,22 +98,20 @@ router.get("/options/:issueId", async (req: Request, res: Response) => {
   if (response === null) {
     console.error("Invalid issue ID:", issueId)
     return res.status(400).json({ error: "Invalid issue ID" })
-  } 
+  }
 
   return res.status(200).json(response)
 })
 
-router.post("/", async (req, res) => {
-  if (req.userId === undefined) {
-    console.error("Unauthorized access attempt to create issue status")
-    return res.status(403).json({ error: "Forbidden" })
-  }
-
+router.post("/", async (req: Request, res: Response) => {
   try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
     const { success, data, error } = IssueStatusCreateSchema.safeParse(req.body)
     if (!success) {
-      console.error("Invalid request data:", error)
-      return res.status(400).json({ error: "Invalid request data" })
+      console.error("Invalid request data: ", error)
+      throw new HttpError(400, "Invalid request data")
     }
 
     // verify project exists and user has access
@@ -123,8 +127,7 @@ router.post("/", async (req, res) => {
     })
 
     if (projectBoard === null) {
-      console.error("Invalid project board ID:", data.projectBoardId)
-      return res.status(400).json({ error: "Invalid project board ID" })
+      throw new HttpError(400, "Invalid project board ID")
     }
 
     const issueStatus = await prisma.issueStatus.create({
@@ -151,25 +154,100 @@ router.post("/", async (req, res) => {
       projectBoardId: projectBoardData?.publicId ?? null,
     })
     if (!parsedResponse.success) {
-      console.error(
-        "Failed to parse created issue status:",
-        parsedResponse.error
-      )
-      return res.status(500).json({
-        error: "Failed to parse created issue status",
-      })
+      throw new HttpError(500, "Failed to parse created issue status")
     }
 
     return res.status(201).json(parsedResponse.data)
-  } catch (error) {
-    console.error("Failed to create issue status: ", error)
-    return res.status(500).json({ error: "Failed to create issue status" })
+  } catch (error: HttpError | unknown) {
+    const httpError = error instanceof HttpError
+    console.error(httpError ? error.message : error)
+    return res.status(httpError ? error.statusCode : 500).json({
+      error: httpError ? error.message : "Failed to create issue status",
+    })
   }
 })
 
-async function getIssueStatusesByProjectBoardId(
-  projectBoardId: string,
-) {
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const statusId = req.params.id
+    if (statusId === undefined || statusId.trim() === "") {
+      throw new HttpError(400, "Missing or invalid issue status ID")
+    }
+
+    const { success, data, error } = IssueStatusUpdateSchema.safeParse(req.body)
+    if (!success) {
+      console.error("Invalid request data: ", error)
+      throw new HttpError(400, "Invalid request data")
+    }
+
+
+
+    const existingStatus = await prisma.issueStatus.findUnique({
+      where: {
+        publicId: statusId,
+        projectBoard: {
+          project: {
+            user: {
+              some: { id: req.userId },
+            },
+          },
+        },
+      },
+    })
+    if (existingStatus === null) {
+      throw new HttpError(404, "Issue status not found")
+    }
+
+    const dataToUpdate = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    )
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      throw new HttpError(400, "No fields to update")
+    }
+
+    const updatedStatus = await prisma.issueStatus.update({
+      where: {
+        publicId: statusId,
+        projectBoard: {
+          project: {
+            user: {
+              some: { id: req.userId },
+            },
+          },
+        },
+      },
+      data: dataToUpdate,
+      include: {
+        projectBoard: true,
+      },
+    })
+
+    const responseData = IssueStatusGETSchema.safeParse({
+      id: updatedStatus.publicId,
+      name: updatedStatus.name,
+      color: updatedStatus.color,
+      projectBoardId: updatedStatus.projectBoard?.publicId ?? null,
+    })
+    if (!responseData.success) {
+      throw new HttpError(500, "Failed to parse updated issue status")
+    }
+
+    return res.status(200).json(responseData.data)
+  } catch (error: HttpError | unknown) {
+    const httpError = error instanceof HttpError
+    console.error(httpError ? error.message : error)
+    return res.status(httpError ? error.statusCode : 500).json({
+      error: httpError ? error.message : "Failed to update issue status",
+    })
+  }
+})
+
+async function getIssueStatusesByProjectBoardId(projectBoardId: string) {
   const projectBoard = await getProjectBoard(projectBoardId)
   if (projectBoard === null) {
     console.error("Invalid project board ID: ", projectBoardId)
