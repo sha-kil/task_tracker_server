@@ -79,7 +79,9 @@ export async function updateUserWithAddress(
     })
   } else if (hasAddressInput) {
     throw new Error("Address data provided but no existing address found") 
-  }  const userWithAddress = await prisma.userProfile.update({
+  }
+
+  const userWithAddress = await prisma.userProfile.update({
     where: {
       publicId: userId,
     },
