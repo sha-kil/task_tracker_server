@@ -219,6 +219,13 @@ router.patch("/:id", async (req: Request, res: Response) => {
     const updatedStatus = await prisma.issueStatus.update({
       where: {
         publicId: statusId,
+        projectBoard: {
+          project: {
+            user: {
+              some: { id: req.userId },
+            },
+          },
+        },
       },
       data: dataToUpdate,
       include: {
