@@ -5,7 +5,7 @@ export async function userWithAddress(
   args: { userId: string },
   context: { userId?: bigint }
 ) {
-  if(context.userId === undefined) {
+  if (context.userId === undefined) {
     throw new Error("Unauthorized")
   }
 
@@ -17,7 +17,7 @@ export async function userWithAddress(
     include: {
       userCredential: true,
       address: true,
-      team: true
+      team: true,
     },
   })
 
@@ -36,7 +36,7 @@ export async function userWithAddress(
     teamId: team ? team.publicId : null,
   }
 
-  const {data: user, success, error } = UserGETSchema.safeParse(fetchedUser) 
+  const { data: user, success, error } = UserGETSchema.safeParse(fetchedUser)
   if (!success) {
     console.error("User data validation error:", error)
     throw new Error("Validation failed")
@@ -73,5 +73,5 @@ export async function userWithAddress(
       : null,
   }
 
-  return response 
+  return response
 }

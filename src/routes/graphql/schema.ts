@@ -90,13 +90,35 @@ export const schema = buildSchema(`
     updatedAt: String!
   }
 
+  input UserWithAddressInput {
+    id: ID!
+    firstName: String
+    lastName: String
+    profilePictureUrl: String
+    position: String
+    department: String
+    organization: String
+    teamId: String
+    apartmentNumber: String
+    houseNumber: String
+    street: String
+    city: String
+    state: String
+    zipCode: String
+    country: String
+  }
+
   type Query {
     issueTable(ids: [ID!]): [IssueTable!]!
     commentsWithUser(issueId: ID!): [CommentWithUser!]!
     userWithAddress(userId: ID!): UserWithAddress!
     userIssueList(userId: ID!): [IssueTable!]!
     userHistories(userId: ID!): [UserHistory!]!
-
+    
     test(a: String!): TestResponse
+  }
+    
+  type Mutation {
+    updateUserWithAddress(inputData: UserWithAddressInput!): UserWithAddress!
   }
 `)

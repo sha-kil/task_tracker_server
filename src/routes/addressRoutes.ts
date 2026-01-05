@@ -1,7 +1,13 @@
 import { Router } from "express"
 import prisma from "src/lib/prisma.js"
 import { getUserProfile } from "src/lib/userProfile.js"
-import { AddressCreateSchema, AddressGETSchema } from "src/schema/address.js"
+import {
+  AddressCreateSchema,
+  AddressGETSchema,
+  AddressUpdateSchema,
+} from "src/schema/address.js"
+import type { Request, Response } from "express"
+import { HttpError } from "src/lib/httpError.js"
 
 const router = Router()
 
@@ -20,7 +26,7 @@ router.post("/", async (req, res) => {
       })
     }
 
-    const user = await getUserProfile(addressCreationData.data.userId) 
+    const user = await getUserProfile(addressCreationData.data.userId)
     if (user === null) {
       console.error("User not found:", addressCreationData.data.userId)
       return res.status(400).json({ error: "User not found" })
@@ -87,6 +93,53 @@ router.get("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching address:", error)
     res.status(500).json({ error: "Failed to fetch address" })
+  }
+})
+
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const addressId = req.params.id
+    if (addressId === undefined) {
+      throw new HttpError(400, "Address ID is required")
+    }
+
+    const addressUpdateData = AddressUpdateSchema.safeParse(req.body)
+    if (!addressUpdateData.success) {
+      throw new HttpError(400, "Invalid address update data")
+    }
+
+    const filteredData = Object.fromEntries(
+      Object.entries(addressUpdateData.data).filter(
+        ([_, value]) => value !== undefined
+      )
+    )
+
+    const { id, publicId, ...updatedAddress } = await prisma.address.update({
+      where: { publicId: addressId, users: { some: { id: req.userId } } },
+      data: filteredData,
+    })
+
+    const responseData = AddressGETSchema.safeParse({
+      ...updatedAddress,
+      id: publicId,
+    })
+    if (!responseData.success) {
+      throw new HttpError(500, "Failed to parse updated address")
+    }
+
+    res.json(responseData.data)
+  } catch (error: HttpError | unknown) {
+    const showDetailedError = error instanceof HttpError
+    console.error(showDetailedError ? error.message : error)
+    res
+      .status(showDetailedError ? error.statusCode : 500)
+      .json({
+        error: showDetailedError ? error.message : "Failed to update address",
+      })
   }
 })
 
