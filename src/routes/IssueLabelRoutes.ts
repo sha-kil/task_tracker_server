@@ -112,16 +112,18 @@ router.post("/", async (req: Request, res: Response) => {
       throw new HttpError(404, "Project board not found")
     }
 
-    const { id, projectId, ...newIssueLabel } = await prisma.issueLabel.create({
-      data: {
-        name: createData.data.name,
-        color: createData.data.color,
-        projectId: project.id,
-      },
-    })
+    const { id, publicId, projectId, ...newIssueLabel } =
+      await prisma.issueLabel.create({
+        data: {
+          name: createData.data.name,
+          color: createData.data.color,
+          projectId: project.id,
+        },
+      })
 
     const responseData = IssueLabelGETSchema.safeParse({
       ...newIssueLabel,
+      id: publicId,
       projectId: createData.data.projectId,
     })
     if (!responseData.success) {
