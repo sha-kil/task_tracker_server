@@ -54,11 +54,15 @@ export async function userHistories(
 
   const response = parsedUserHistories.map((history) => {
     return {
-      currentValue: history.change.current,
+      authorId: history.authorId,
+      change: {
+        topic: history.change.topic,
+        current: history.change.current,
+        previous: history.change.previous,
+      },
+      changedAt: history.changedAt,
       id: history.id,
       issue: history.issue,
-      topic: history.change.topic,
-      updatedAt: history.changedAt,
     }
   })
 

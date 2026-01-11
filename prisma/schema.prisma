@@ -144,20 +144,20 @@ model Team {
 }
 
 model IssueHistory {
+  authorId            BigInt
   changedAt           DateTime        @default(now())
   change              Json
   id                  BigInt          @id @default(autoincrement())
   issueId             BigInt
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  authorId            BigInt
 
   issue               Issue           @relation(fields: [issueId], references: [id])
   author              UserProfile     @relation(fields: [authorId], references: [id])
 }
 
 model Project {
-  id                  BigInt          @id @default(autoincrement())
   description         String
+  id                  BigInt          @id @default(autoincrement())
   name                String
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 

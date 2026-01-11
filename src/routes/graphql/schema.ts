@@ -82,12 +82,18 @@ export const schema = buildSchema(`
     title: String!
   }
 
+  type HistoryChange {
+    topic: String!
+    current: String
+    previous: String
+  }
+
   type UserHistory {
-    currentValue: String
+    authorId: ID!
+    change: HistoryChange!
+    changedAt: String!
     id: ID!
     issue: UserHistoryIssue!
-    topic: String!
-    updatedAt: String!
   }
 
   input UserWithAddressInput {
