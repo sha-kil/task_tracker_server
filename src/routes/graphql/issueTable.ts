@@ -29,13 +29,9 @@ export async function issueTable(
           color: true,
         },
       },
-      project: {
+      labels: {
         select: {
-          issueLabel: {
-            select: {
-              name: true,
-            },
-          },
+          name: true,
         },
       },
       assignee: true,
@@ -59,7 +55,7 @@ export async function issueTable(
       createdAt: issue.createdAt.toISOString(),
       createdById: issue.creator.publicId,
       id: issue.publicId,
-      labels: issue.project.issueLabel.map((label) => label.name),
+      labels: issue.labels.map((label) => label.name),
       priority: issue.priority,
       status: {
         color: issue.status.color,
