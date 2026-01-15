@@ -15,6 +15,7 @@ import addressRoutes from "src/routes/addressRoutes.js"
 import teamRoutes from "src/routes/teamRoutes.js"
 import issueHistoryRoutes from "src/routes/issueHistoryRoutes.js"
 import graphQLRouter from "src/routes/graphql/graphqlRoutes.js"
+import fileRoutes from "src/routes/fileRoutes.js"
 import cors from "cors"
 
 const isProduction = process.env.NODE_ENV === "production"
@@ -63,6 +64,7 @@ app.use("/issue-comment", authMiddleware, issueCommentRoutes)
 app.use("/address", authMiddleware, addressRoutes)
 app.use("/team", authMiddleware, teamRoutes)
 app.use("/issue-history", authMiddleware, issueHistoryRoutes)
+app.use("/files", authMiddleware, fileRoutes)
 
 app.use("/graphql", authMiddleware, graphQLRouter)
 

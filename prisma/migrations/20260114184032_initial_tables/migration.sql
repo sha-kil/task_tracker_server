@@ -7,6 +7,9 @@ CREATE TYPE "IssueType" AS ENUM ('EPIC', 'STORY', 'TASK');
 -- CreateEnum
 CREATE TYPE "IssuePriority" AS ENUM ('low', 'medium', 'high', 'urgent');
 
+-- CreateEnum
+CREATE TYPE "FileStatus" AS ENUM ('PENDING', 'UPLOADED', 'FAILED');
+
 -- CreateTable
 CREATE TABLE "UserCredential" (
     "email" TEXT NOT NULL,
@@ -28,7 +31,7 @@ CREATE TABLE "UserProfile" (
     "lastName" TEXT NOT NULL DEFAULT '',
     "organization" TEXT,
     "position" TEXT,
-    "profilePictureUrl" TEXT,
+    "profilePictureId" BIGINT,
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "teamId" BIGINT,
@@ -68,6 +71,7 @@ CREATE TABLE "IssueComment" (
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
     "text" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "parentId" BIGINT,
 
     CONSTRAINT "IssueComment_pkey" PRIMARY KEY ("id")
 );
@@ -101,20 +105,20 @@ CREATE TABLE "Team" (
 
 -- CreateTable
 CREATE TABLE "IssueHistory" (
+    "authorId" BIGINT NOT NULL,
     "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "change" JSONB NOT NULL,
     "id" BIGSERIAL NOT NULL,
     "issueId" BIGINT NOT NULL,
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
-    "authorId" BIGINT NOT NULL,
 
     CONSTRAINT "IssueHistory_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Project" (
-    "id" BIGSERIAL NOT NULL,
     "description" TEXT NOT NULL,
+    "id" BIGSERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
 
@@ -152,6 +156,19 @@ CREATE TABLE "IssueStatus" (
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
 
     CONSTRAINT "IssueStatus_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "File" (
+    "id" BIGSERIAL NOT NULL,
+    "filename" TEXT NOT NULL,
+    "publicId" UUID NOT NULL DEFAULT uuidv7(),
+    "s3Key" TEXT NOT NULL,
+    "status" "FileStatus" NOT NULL DEFAULT 'PENDING',
+    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "uploadedById" BIGINT NOT NULL,
+
+    CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -229,6 +246,12 @@ CREATE UNIQUE INDEX "IssueStatus_publicId_key" ON "IssueStatus"("publicId");
 CREATE UNIQUE INDEX "IssueStatus_name_projectBoardId_key" ON "IssueStatus"("name", "projectBoardId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "File_publicId_key" ON "File"("publicId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "File_s3Key_key" ON "File"("s3Key");
+
+-- CreateIndex
 CREATE INDEX "_IssueToIssueLabel_B_index" ON "_IssueToIssueLabel"("B");
 
 -- CreateIndex
@@ -242,6 +265,9 @@ CREATE INDEX "_ProjectToUserProfile_B_index" ON "_ProjectToUserProfile"("B");
 
 -- AddForeignKey
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "Address"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_profilePictureId_fkey" FOREIGN KEY ("profilePictureId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -274,6 +300,9 @@ ALTER TABLE "IssueComment" ADD CONSTRAINT "IssueComment_authorId_fkey" FOREIGN K
 ALTER TABLE "IssueComment" ADD CONSTRAINT "IssueComment_issueId_fkey" FOREIGN KEY ("issueId") REFERENCES "Issue"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "IssueComment" ADD CONSTRAINT "IssueComment_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "IssueComment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "IssueHistory" ADD CONSTRAINT "IssueHistory_issueId_fkey" FOREIGN KEY ("issueId") REFERENCES "Issue"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -287,6 +316,9 @@ ALTER TABLE "ProjectBoard" ADD CONSTRAINT "ProjectBoard_projectId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "IssueStatus" ADD CONSTRAINT "IssueStatus_projectBoardId_fkey" FOREIGN KEY ("projectBoardId") REFERENCES "ProjectBoard"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "File" ADD CONSTRAINT "File_uploadedById_fkey" FOREIGN KEY ("uploadedById") REFERENCES "UserProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_IssueToIssueLabel" ADD CONSTRAINT "_IssueToIssueLabel_A_fkey" FOREIGN KEY ("A") REFERENCES "Issue"("id") ON DELETE CASCADE ON UPDATE CASCADE;

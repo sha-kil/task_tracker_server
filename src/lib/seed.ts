@@ -1,6 +1,5 @@
 import {
   seed,
-  randAvatar,
   randCompanyName,
   randDepartment,
   randJobTitle,
@@ -43,7 +42,6 @@ async function main() {
         create: {
           firstName: "John",
           lastName: "Doe",
-          profilePictureUrl: randAvatar() + "?u=" + email1,
           position: randJobTitle(),
           department: randDepartment(),
           organization: randCompanyName(),
@@ -86,7 +84,6 @@ async function main() {
         create: {
           firstName: "Jane",
           lastName: "Smith",
-          profilePictureUrl: randAvatar() + "?u=" + email2,
           position: randJobTitle(),
           department: randDepartment(),
           organization: randCompanyName(),
@@ -133,8 +130,8 @@ async function main() {
       name: "To do",
       color: "#0000FF",
       projectBoard: {
-        connect: { id: defaultProjectBoard.id }
-      }
+        connect: { id: defaultProjectBoard.id },
+      },
     },
   })
 
@@ -143,9 +140,9 @@ async function main() {
       name: "In progress",
       color: "#FFA500",
       projectBoard: {
-        connect: { id: defaultProjectBoard.id }
-      }
-    }
+        connect: { id: defaultProjectBoard.id },
+      },
+    },
   })
 
   await prisma.issueStatus.create({
@@ -153,9 +150,9 @@ async function main() {
       name: "Done",
       color: "#008000",
       projectBoard: {
-        connect: { id: defaultProjectBoard.id }
-      }
-    }
+        connect: { id: defaultProjectBoard.id },
+      },
+    },
   })
 
   const issue = await prisma.issue.create({

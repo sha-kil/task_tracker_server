@@ -32,7 +32,11 @@ enum IssuePriority {
   urgent 
 }
 
-
+enum FileStatus {
+  PENDING
+  UPLOADED
+  FAILED
+}
 
 model UserCredential {
   email               String          @unique
@@ -44,7 +48,7 @@ model UserCredential {
 
 model UserProfile {
   addressId           BigInt?
-  coverImageUrl       String?
+  coverImageId        BigInt? 
   department          String?
   firstName           String          @default("")
   homePhone           String?         @unique
@@ -53,7 +57,7 @@ model UserProfile {
   lastName            String          @default("")
   organization        String?
   position            String?
-  profilePictureUrl   String?
+  profilePictureId    BigInt?
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
   role                UserRole        @default(USER)
   teamId              BigInt?
@@ -63,11 +67,14 @@ model UserProfile {
   assignee            Issue[]         @relation("IssueAssignee")
   comment             IssueComment[]
   creator             Issue[]         @relation("IssueCreator")
+  coverImage         File?           @relation("UserCoverImage", fields: [coverImageId], references: [id], onDelete: SetNull)
+  profilePicture     File?           @relation("UserProfilePicture", fields: [profilePictureId], references: [id], onDelete: SetNull)
   history             IssueHistory[]
   likedComments      IssueComment[]  @relation("IssueCommentLikes")
   project             Project[]
   team                Team?           @relation(fields: [teamId], references: [id])
   userCredential      UserCredential  @relation(fields: [id], references: [id], onDelete: Cascade)
+  uploadedFiles       File[]          @relation("UploadedByUser")
 }
 
 model Issue {
@@ -202,4 +209,18 @@ model IssueStatus {
   projectBoard        ProjectBoard?   @relation(fields: [projectBoardId], references: [id])
 
   @@unique([name, projectBoardId])
+}
+
+model File {
+  id                      BigInt              @id @default(autoincrement())
+  filename                String              
+  publicId                String              @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  s3Key                   String              @unique
+  status                  FileStatus          @default(PENDING) 
+  uploadedAt              DateTime            @default(now())
+  uploadedById            BigInt?
+
+  userCoverImage          UserProfile[]       @relation("UserCoverImage")
+  uploadedBy              UserProfile?        @relation("UploadedByUser", fields: [uploadedById], references: [id], onDelete: SetNull)
+  userProfilePicture      UserProfile[]       @relation("UserProfilePicture")
 }

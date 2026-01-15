@@ -45,10 +45,21 @@ const UserBaseSchemaWithoutDefault = UserBaseSchema.omit({
 
 export const UserGETSchema = UserBaseSchema.omit({ password: true })
 
-export const UserCreateSchema = UserBaseSchema.omit({ id: true })
+export const UserCreateSchema = UserBaseSchema.omit({
+  id: true,
+  profilePictureUrl: true,
+  coverImageUrl: true,
+})
 
 export const UserPATCHSchema = UserBaseSchemaWithoutDefault.omit({
   id: true,
   password: true,
   email: true,
-}).partial()
+  profilePictureUrl: true,
+  coverImageUrl: true,
+})
+  .extend({
+    profilePictureId: z.uuidv7().nullable(),
+    coverImageId: z.uuidv7().nullable(),
+  })
+  .partial()

@@ -1,3 +1,4 @@
+import { getFileUrlById } from "src/lib/file.js"
 import prisma from "src/lib/prisma.js"
 
 export async function commentsWithUser(
@@ -21,7 +22,7 @@ export async function commentsWithUser(
           publicId: true,
           firstName: true,
           lastName: true,
-          profilePictureUrl: true,
+          profilePicture: true,
           lastActive: true,
           userCredential: true,
         },
@@ -31,29 +32,34 @@ export async function commentsWithUser(
     },
   })
 
-  const response = comments.map((comment) => {
-    const edited = comment.updatedAt > comment.createdAt
-    return {
-      comment: {
-        id: comment.publicId,
-        text: comment.text,
-        createdAt: comment.createdAt.toISOString(),
-        updatedAt: comment.updatedAt.toISOString(),
-        edited: edited,
-        likedByUserIds: comment.likedBy.map((user) => user.publicId),
-        parentId: comment.parent ? comment.parent.publicId : null,
-        authorId: comment.author.publicId,
-      },
-      user: {
-        id: comment.author.publicId,
-        firstName: comment.author.firstName,
-        lastName: comment.author.lastName,
-        email: comment.author.userCredential.email,
-        lastActive: comment.author.lastActive.toISOString(),
-        profilePictureUrl: comment.author.profilePictureUrl,
-      },
-    }
-  })
+  const response = await Promise.all(
+    comments.map(async (comment) => {
+      const edited = comment.updatedAt > comment.createdAt
+      const profilePictureUrl = comment.author.profilePicture
+        ? await getFileUrlById(comment.author.profilePicture.publicId)
+        : null
+      return {
+        comment: {
+          id: comment.publicId,
+          text: comment.text,
+          createdAt: comment.createdAt.toISOString(),
+          updatedAt: comment.updatedAt.toISOString(),
+          edited: edited,
+          likedByUserIds: comment.likedBy.map((user) => user.publicId),
+          parentId: comment.parent ? comment.parent.publicId : null,
+          authorId: comment.author.publicId,
+        },
+        user: {
+          id: comment.author.publicId,
+          firstName: comment.author.firstName,
+          lastName: comment.author.lastName,
+          email: comment.author.userCredential.email,
+          lastActive: comment.author.lastActive.toISOString(),
+          profilePictureUrl,
+        },
+      }
+    })
+  )
 
   return response
 }

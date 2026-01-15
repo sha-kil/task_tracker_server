@@ -5,6 +5,7 @@ import { UserPATCHSchema } from "src/schema/user.js"
 import type { Request, Response } from "express"
 import { HttpError } from "src/lib/httpError.js"
 import { getUserByCredentialId, parseUser } from "src/lib/userProfile.js"
+import { getFileUrlById } from "src/lib/file.js"
 
 const router = express.Router()
 
@@ -13,7 +14,13 @@ const router = express.Router()
 export async function getUserByProfilePublicId(publicId: string) {
   const userProfile = await prisma.userProfile.findUnique({
     where: { publicId },
-    include: { userCredential: true, team: true, address: true },
+    include: {
+      userCredential: true,
+      team: true,
+      address: true,
+      profilePicture: true,
+      coverImage: true,
+    },
   })
 
   if (userProfile === null || userProfile.userCredential === null) {
@@ -27,7 +34,14 @@ export async function getUserByProfilePublicId(publicId: string) {
       userCredential,
       profile,
       address?.publicId ?? null,
-      team?.publicId ?? null
+      team?.publicId ?? null,
+
+      profile.coverImage
+        ? await getFileUrlById(profile.coverImage.publicId)
+        : null,
+      profile.profilePicture
+        ? await getFileUrlById(profile.profilePicture.publicId)
+        : null
     )
   } catch (error) {
     throw new HttpError(500, "Failed to parse user data: " + error)
@@ -83,7 +97,13 @@ router.get("/project/:projectId", async (req, res) => {
           some: { publicId: req.params.projectId },
         },
       },
-      include: { team: true, address: true, userCredential: true },
+      include: {
+        team: true,
+        address: true,
+        userCredential: true,
+        profilePicture: true,
+        coverImage: true,
+      },
     })
 
     const responseData = []
@@ -94,7 +114,14 @@ router.get("/project/:projectId", async (req, res) => {
           userCredential,
           profile,
           address?.publicId ?? null,
-          team?.publicId ?? null
+          team?.publicId ?? null,
+
+          profile.coverImage
+            ? await getFileUrlById(profile.coverImage.publicId)
+            : null,
+          profile.profilePicture
+            ? await getFileUrlById(profile.profilePicture.publicId)
+            : null
         )
 
         responseData.push(parsedUser)
@@ -135,6 +162,50 @@ router.patch("/:userId", async (req: Request, res: Response) => {
           where: { publicId: validatedUserInput.data.teamId },
         })
       : null
+    const profilePicture = validatedUserInput.data.profilePictureId
+      ? await prisma.file.findUnique({
+          where: { publicId: validatedUserInput.data.profilePictureId },
+        })
+      : null
+    if (validatedUserInput.data.profilePictureId && !profilePicture) {
+      throw new HttpError(404, "Profile picture file not found")
+    }
+    const coverImage = validatedUserInput.data.coverImageId
+      ? await prisma.file.findUnique({
+          where: { publicId: validatedUserInput.data.coverImageId },
+        })
+      : null
+    if (validatedUserInput.data.coverImageId && !coverImage) {
+      throw new HttpError(404, "Cover image file not found")
+    }
+    const currentProfile = await prisma.userProfile.findUnique({
+      where: { publicId: req.params.userId },
+    })
+    if (currentProfile === null) {
+      throw new HttpError(404, "User not found")
+    }
+
+    if (
+      currentProfile.profilePictureId !== null &&
+      profilePicture !== null &&
+      currentProfile.profilePictureId !== profilePicture.id
+    ) {
+      // Delete old profile picture file record
+      await prisma.file.delete({
+        where: { id: currentProfile.profilePictureId },
+      })
+    }
+
+    if (
+      currentProfile.coverImageId !== null &&
+      coverImage !== null &&
+      currentProfile.coverImageId !== coverImage.id
+    ) {
+      // Delete old cover image file record
+      await prisma.file.delete({
+        where: { id: currentProfile.coverImageId },
+      })
+    }
 
     await prisma.userProfile.update({
       where: { publicId: req.params.userId },
@@ -142,8 +213,8 @@ router.patch("/:userId", async (req: Request, res: Response) => {
         ...(validatedUserInput.data.addressId !== undefined && {
           addressId: address?.id ?? null,
         }),
-        ...(validatedUserInput.data.coverImageUrl !== undefined && {
-          coverImageUrl: validatedUserInput.data.coverImageUrl,
+        ...(validatedUserInput.data.coverImageId !== undefined && {
+          coverImageId: coverImage === null ? null : coverImage.id,
         }),
         ...(validatedUserInput.data.department !== undefined && {
           department: validatedUserInput.data.department,
@@ -166,8 +237,8 @@ router.patch("/:userId", async (req: Request, res: Response) => {
         ...(validatedUserInput.data.position !== undefined && {
           position: validatedUserInput.data.position,
         }),
-        ...(validatedUserInput.data.profilePictureUrl !== undefined && {
-          profilePictureUrl: validatedUserInput.data.profilePictureUrl,
+        ...(validatedUserInput.data.profilePictureId !== undefined && {
+          profilePictureId: profilePicture === null ? null : profilePicture.id,
         }),
         ...(validatedUserInput.data.role !== undefined && {
           role: validatedUserInput.data.role,
