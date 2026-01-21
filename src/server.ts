@@ -7,6 +7,7 @@ import authRoutes from "src/routes/authRoutes.js"
 import userRoutes from "src/routes/userRoutes.js"
 import projectRoutes from "src/routes/projectRoutes.js"
 import projectBoardRoutes from "src/routes/projectBoardRoutes.js"
+import projectBoardColumnRoutes from "src/routes/projectBoardColumnRoutes.js"
 import projectBoardColumnItemRoutes from "src/routes/projectBoardColumnItemRoutes.js"
 import issueStatusRoutes from "src/routes/IssueStatusRoutes.js"
 import issueLabelRoutes from "src/routes/IssueLabelRoutes.js"
@@ -58,6 +59,7 @@ app.use("/auth", authRoutes)
 app.use("/user", authMiddleware, userRoutes)
 app.use("/project", authMiddleware, projectRoutes)
 app.use("/project-board", authMiddleware, projectBoardRoutes)
+app.use("/project-board-column", authMiddleware, projectBoardColumnRoutes)
 app.use(
   "/project-board-column-item",
   authMiddleware,

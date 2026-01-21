@@ -199,6 +199,7 @@ model ProjectBoard {
 model ProjectBoardColumn {
   id                  BigInt          @id @default(autoincrement())
   name                String
+  description         String          @default("")
   projectBoardId      BigInt
   position            Float 
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid

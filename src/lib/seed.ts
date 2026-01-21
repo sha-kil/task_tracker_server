@@ -184,7 +184,7 @@ async function main() {
     data: {
       name: "To Do",
       projectBoardId: defaultProjectBoard.id,
-      position: 0,
+      position: 1,
       columnIssues: {
         create: [
           {
@@ -200,7 +200,7 @@ async function main() {
     data: {
       name: "In Progress",
       projectBoardId: defaultProjectBoard.id,
-      position: 1,
+      position: 2,
       columnIssues: {
         create: [
           {
@@ -216,7 +216,7 @@ async function main() {
     data: {
       name: "Done",
       projectBoardId: defaultProjectBoard.id,
-      position: 2,
+      position: 3,
     },
   })
 
