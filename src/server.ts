@@ -7,6 +7,7 @@ import authRoutes from "src/routes/authRoutes.js"
 import userRoutes from "src/routes/userRoutes.js"
 import projectRoutes from "src/routes/projectRoutes.js"
 import projectBoardRoutes from "src/routes/projectBoardRoutes.js"
+import projectBoardColumnItemRoutes from "src/routes/projectBoardColumnItemRoutes.js"
 import issueStatusRoutes from "src/routes/IssueStatusRoutes.js"
 import issueLabelRoutes from "src/routes/IssueLabelRoutes.js"
 import issueRoutes from "src/routes/issueRoutes.js"
@@ -45,7 +46,7 @@ app.use(
     credentials: true,
     // methods: ['GET', 'POST', "PUT", "DELETE", 'OPTIONS'],
     // allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Type']
-  })
+  }),
 )
 
 app.get("/", (_req, res) => {
@@ -57,6 +58,11 @@ app.use("/auth", authRoutes)
 app.use("/user", authMiddleware, userRoutes)
 app.use("/project", authMiddleware, projectRoutes)
 app.use("/project-board", authMiddleware, projectBoardRoutes)
+app.use(
+  "/project-board-column-item",
+  authMiddleware,
+  projectBoardColumnItemRoutes,
+)
 app.use("/issue-status", authMiddleware, issueStatusRoutes)
 app.use("/issue-label", authMiddleware, issueLabelRoutes)
 app.use("/issue", authMiddleware, issueRoutes)

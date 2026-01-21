@@ -22,7 +22,7 @@ CREATE TABLE "UserCredential" (
 -- CreateTable
 CREATE TABLE "UserProfile" (
     "addressId" BIGINT,
-    "coverImageUrl" TEXT,
+    "coverImageId" BIGINT,
     "department" TEXT,
     "firstName" TEXT NOT NULL DEFAULT '',
     "homePhone" TEXT,
@@ -51,7 +51,7 @@ CREATE TABLE "Issue" (
     "parentId" BIGINT,
     "priority" "IssuePriority" NOT NULL,
     "projectId" BIGINT NOT NULL,
-    "projectBoardId" BIGINT,
+    "projectBoardColumnId" BIGINT,
     "publicId" UUID NOT NULL DEFAULT uuidv7(),
     "startDate" TIMESTAMP(3),
     "statusId" BIGINT NOT NULL,
@@ -148,6 +148,17 @@ CREATE TABLE "ProjectBoard" (
 );
 
 -- CreateTable
+CREATE TABLE "ProjectBoardColumn" (
+    "id" BIGSERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "projectBoardId" BIGINT NOT NULL,
+    "position" INTEGER NOT NULL,
+    "publicId" UUID NOT NULL DEFAULT uuidv7(),
+
+    CONSTRAINT "ProjectBoardColumn_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "IssueStatus" (
     "color" TEXT,
     "id" BIGSERIAL NOT NULL,
@@ -166,7 +177,7 @@ CREATE TABLE "File" (
     "s3Key" TEXT NOT NULL,
     "status" "FileStatus" NOT NULL DEFAULT 'PENDING',
     "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "uploadedById" BIGINT NOT NULL,
+    "uploadedById" BIGINT,
 
     CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
@@ -240,6 +251,9 @@ CREATE UNIQUE INDEX "IssueLabel_publicId_key" ON "IssueLabel"("publicId");
 CREATE UNIQUE INDEX "ProjectBoard_publicId_key" ON "ProjectBoard"("publicId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ProjectBoardColumn_publicId_key" ON "ProjectBoardColumn"("publicId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "IssueStatus_publicId_key" ON "IssueStatus"("publicId");
 
 -- CreateIndex
@@ -267,6 +281,9 @@ CREATE INDEX "_ProjectToUserProfile_B_index" ON "_ProjectToUserProfile"("B");
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_addressId_fkey" FOREIGN KEY ("addressId") REFERENCES "Address"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_coverImageId_fkey" FOREIGN KEY ("coverImageId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_profilePictureId_fkey" FOREIGN KEY ("profilePictureId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -291,7 +308,7 @@ ALTER TABLE "Issue" ADD CONSTRAINT "Issue_parentId_fkey" FOREIGN KEY ("parentId"
 ALTER TABLE "Issue" ADD CONSTRAINT "Issue_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Issue" ADD CONSTRAINT "Issue_projectBoardId_fkey" FOREIGN KEY ("projectBoardId") REFERENCES "ProjectBoard"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Issue" ADD CONSTRAINT "Issue_projectBoardColumnId_fkey" FOREIGN KEY ("projectBoardColumnId") REFERENCES "ProjectBoardColumn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "IssueComment" ADD CONSTRAINT "IssueComment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "UserProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -315,10 +332,13 @@ ALTER TABLE "IssueLabel" ADD CONSTRAINT "IssueLabel_projectId_fkey" FOREIGN KEY 
 ALTER TABLE "ProjectBoard" ADD CONSTRAINT "ProjectBoard_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ProjectBoardColumn" ADD CONSTRAINT "ProjectBoardColumn_projectBoardId_fkey" FOREIGN KEY ("projectBoardId") REFERENCES "ProjectBoard"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "IssueStatus" ADD CONSTRAINT "IssueStatus_projectBoardId_fkey" FOREIGN KEY ("projectBoardId") REFERENCES "ProjectBoard"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "File" ADD CONSTRAINT "File_uploadedById_fkey" FOREIGN KEY ("uploadedById") REFERENCES "UserProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "File" ADD CONSTRAINT "File_uploadedById_fkey" FOREIGN KEY ("uploadedById") REFERENCES "UserProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_IssueToIssueLabel" ADD CONSTRAINT "_IssueToIssueLabel_A_fkey" FOREIGN KEY ("A") REFERENCES "Issue"("id") ON DELETE CASCADE ON UPDATE CASCADE;

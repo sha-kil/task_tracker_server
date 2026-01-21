@@ -98,7 +98,11 @@ async function main() {
         },
       },
     },
+    include: { profile: true },
   })
+  if (user2.profile === null) {
+    throw new Error("User profile was not created")
+  }
 
   const defaultProjectBoard = await prisma.projectBoard.create({
     data: {
@@ -129,9 +133,6 @@ async function main() {
     data: {
       name: "To do",
       color: "#0000FF",
-      projectBoard: {
-        connect: { id: defaultProjectBoard.id },
-      },
     },
   })
 
@@ -139,9 +140,6 @@ async function main() {
     data: {
       name: "In progress",
       color: "#FFA500",
-      projectBoard: {
-        connect: { id: defaultProjectBoard.id },
-      },
     },
   })
 
@@ -149,9 +147,6 @@ async function main() {
     data: {
       name: "Done",
       color: "#008000",
-      projectBoard: {
-        connect: { id: defaultProjectBoard.id },
-      },
     },
   })
 
@@ -167,6 +162,61 @@ async function main() {
       labels: {
         connect: labels.map((label) => ({ id: label.id })),
       },
+    },
+  })
+
+  const issue2 = await prisma.issue.create({
+    data: {
+      createdById: user2.profile.id,
+      description: "This is the second issue in the project.",
+      priority: "high",
+      projectId: project.id,
+      statusId: backlogStatus.id,
+      title: "Second Issue",
+      type: "EPIC",
+      labels: {
+        connect: labels.map((label) => ({ id: label.id })),
+      },
+    },
+  })
+
+  await prisma.projectBoardColumn.create({
+    data: {
+      name: "To Do",
+      projectBoardId: defaultProjectBoard.id,
+      position: 0,
+      columnIssues: {
+        create: [
+          {
+            issueId: issue.id,
+            position: 1,
+          },
+        ],
+      },
+    },
+  })
+
+  await prisma.projectBoardColumn.create({
+    data: {
+      name: "In Progress",
+      projectBoardId: defaultProjectBoard.id,
+      position: 1,
+      columnIssues: {
+        create: [
+          {
+            issueId: issue2.id,
+            position: 1,
+          },
+        ],
+      },
+    },
+  })
+
+  await prisma.projectBoardColumn.create({
+    data: {
+      name: "Done",
+      projectBoardId: defaultProjectBoard.id,
+      position: 2,
     },
   })
 

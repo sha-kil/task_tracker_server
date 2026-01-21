@@ -87,7 +87,6 @@ model Issue {
   parentId            BigInt?
   priority            IssuePriority
   projectId           BigInt
-  projectBoardId      BigInt?
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
   startDate           DateTime?
   statusId            BigInt 
@@ -104,7 +103,7 @@ model Issue {
   status              IssueStatus     @relation(fields: [statusId], references: [id])
   parent              Issue?          @relation("IssueHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   project             Project         @relation(fields: [projectId], references: [id])
-  projectBoard        ProjectBoard?   @relation(fields: [projectBoardId], references: [id])
+  ProjectBoardColumnIssue      ProjectBoardColumnItem? 
 }
 
 model IssueComment {
@@ -193,9 +192,31 @@ model ProjectBoard {
   projectId           BigInt
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  issues              Issue[]
   project             Project         @relation(fields: [projectId], references: [id])
-  issueStatuses       IssueStatus[]
+  columns             ProjectBoardColumn[]
+}
+
+model ProjectBoardColumn {
+  id                  BigInt          @id @default(autoincrement())
+  name                String
+  projectBoardId      BigInt
+  position            Float 
+  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+
+  columnIssues              ProjectBoardColumnItem[]
+  projectBoard        ProjectBoard    @relation(fields: [projectBoardId], references: [id], onDelete: Cascade)
+}
+
+model ProjectBoardColumnItem {
+  id                        BigInt          @id @default(autoincrement())
+  issueId                   BigInt          @unique
+  position                  Float
+  projectBoardColumnId      BigInt
+  publicId                  String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+
+  issue                     Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  projectBoardColumn         ProjectBoardColumn @relation(fields: [projectBoardColumnId], references: [id], onDelete: Cascade)
+	@@map("ProjectBoardColumnIssue")
 }
 
 model IssueStatus {
@@ -206,7 +227,6 @@ model IssueStatus {
   publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
   issues              Issue[]
-  projectBoard        ProjectBoard?   @relation(fields: [projectBoardId], references: [id])
 
   @@unique([name, projectBoardId])
 }
