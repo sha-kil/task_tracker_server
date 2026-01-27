@@ -1,8 +1,55 @@
-import express from "express"
+import express, { type Request, type Response } from "express"
+import { HttpError } from "src/lib/httpError.js"
 import prisma from "src/lib/prisma.js"
 import { ProjectGETSchema, ProjectPOSTSchema } from "src/schema/project.js"
 
 const router = express.Router()
+
+router.get("/user/:userId", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+    const { userId } = req.params
+    if (userId === undefined) {
+      throw new HttpError(400, "User ID is required")
+    }
+
+    const projects = await prisma.project.findMany({
+      where: {
+        user: {
+          some: {
+            publicId: userId,
+          },
+        },
+      },
+    })
+
+    const responseData = projects.map((project) => {
+      const { id, publicId, ...projectWithoutId } = project
+      const parsedProject = ProjectGETSchema.safeParse({
+        ...projectWithoutId,
+        id: publicId,
+      })
+      if (!parsedProject.success) {
+        console.error(
+          "Error validating project data for response: ",
+          parsedProject.error,
+        )
+        throw new HttpError(500, "Failed to process project data for response")
+      }
+      return parsedProject.data
+    })
+
+    res.status(200).json(responseData)
+  } catch (error: HttpError | unknown) {
+    console.error(error instanceof HttpError ? error.message : error)
+    res.status(error instanceof HttpError ? error.statusCode : 500).json({
+      error:
+        error instanceof HttpError ? error.message : "Internal Server Error",
+    })
+  }
+})
 
 // Create a new project
 router.post("/", async (req, res) => {
@@ -37,7 +84,7 @@ router.post("/", async (req, res) => {
     if (!responseData.success) {
       console.error(
         "Error validating project data for response: ",
-        responseData.error
+        responseData.error,
       )
       return res
         .status(500)

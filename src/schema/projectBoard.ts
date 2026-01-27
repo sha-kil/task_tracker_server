@@ -1,7 +1,7 @@
 import z from "zod"
 import { ProjectBoardColumnItemGetSchema } from "src/schema/projectBoardColumnItem.js"
 
-const ProjectBoardColumnSchema = z.object({
+export const ProjectBoardColumnSchema = z.object({
   id: z.uuidv7(),
   name: z.string().min(1).max(50),
   position: z.number(),
