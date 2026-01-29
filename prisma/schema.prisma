@@ -26,10 +26,10 @@ enum IssueType {
 }
 
 enum IssuePriority {
-  low 
+  low
   medium
   high
-  urgent 
+  urgent
 }
 
 enum FileStatus {
@@ -39,209 +39,195 @@ enum FileStatus {
 }
 
 model UserCredential {
-  email               String          @unique
-  id                  BigInt          @id @default(autoincrement())
-  password            String
+  email    String @unique
+  id       BigInt @id @default(autoincrement())
+  password String
 
-  profile             UserProfile?
+  profile UserProfile?
 }
 
 model UserProfile {
-  addressId           BigInt?
-  coverImageId        BigInt? 
-  department          String?
-  firstName           String          @default("")
-  homePhone           String?         @unique
-  id                  BigInt          @id @default(autoincrement())
-  lastActive          DateTime        @default(now())
-  lastName            String          @default("")
-  organization        String?
-  position            String?
-  profilePictureId    BigInt?
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  role                UserRole        @default(USER)
-  teamId              BigInt?
-  workPhone           String?         @unique
+  addressId        BigInt?
+  coverImageId     BigInt?
+  department       String?
+  firstName        String   @default("")
+  homePhone        String?  @unique
+  id               BigInt   @id @default(autoincrement())
+  lastActive       DateTime @default(now())
+  lastName         String   @default("")
+  organization     String?
+  position         String?
+  profilePictureId BigInt?
+  publicId         String   @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  role             UserRole @default(USER)
+  teamId           BigInt?
+  workPhone        String?  @unique
 
-  address             Address?        @relation(fields: [addressId], references: [id])
-  assignee            Issue[]         @relation("IssueAssignee")
-  comment             IssueComment[]
-  creator             Issue[]         @relation("IssueCreator")
-  coverImage         File?           @relation("UserCoverImage", fields: [coverImageId], references: [id], onDelete: SetNull)
-  profilePicture     File?           @relation("UserProfilePicture", fields: [profilePictureId], references: [id], onDelete: SetNull)
-  history             IssueHistory[]
-  likedComments      IssueComment[]  @relation("IssueCommentLikes")
-  project             Project[]
-  team                Team?           @relation(fields: [teamId], references: [id])
-  userCredential      UserCredential  @relation(fields: [id], references: [id], onDelete: Cascade)
-  uploadedFiles       File[]          @relation("UploadedByUser")
+  address        Address?       @relation(fields: [addressId], references: [id])
+  assignee       Issue[]        @relation("IssueAssignee")
+  comment        IssueComment[]
+  creator        Issue[]        @relation("IssueCreator")
+  coverImage     File?          @relation("UserCoverImage", fields: [coverImageId], references: [id], onDelete: SetNull)
+  profilePicture File?          @relation("UserProfilePicture", fields: [profilePictureId], references: [id], onDelete: SetNull)
+  history        IssueHistory[]
+  likedComments  IssueComment[] @relation("IssueCommentLikes")
+  project        Project[]
+  team           Team?          @relation(fields: [teamId], references: [id])
+  userCredential UserCredential @relation(fields: [id], references: [id], onDelete: Cascade)
+  uploadedFiles  File[]         @relation("UploadedByUser")
 }
 
 model Issue {
-  assigneeId          BigInt?
-  createdAt           DateTime        @default(now())
-  createdById         BigInt
-  description         String
-  dueDate             DateTime?
-  id                  BigInt          @id @default(autoincrement())
-  parentId            BigInt?
-  priority            IssuePriority
-  projectId           BigInt
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  startDate           DateTime?
-  statusId            BigInt 
-  title               String
-  type                IssueType 
-  updatedAt           DateTime        @default(now())
+  assigneeId               BigInt?
+  createdAt                DateTime      @default(now())
+  createdById              BigInt
+  description              String
+  dueDate                  DateTime?
+  id                       BigInt        @id @default(autoincrement())
+  parentId                 BigInt?
+  priority                 IssuePriority
+  projectId                BigInt
+  projectBoardColumnItemId BigInt?
+  publicId                 String        @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  startDate                DateTime?
+  title                    String
+  type                     IssueType
+  updatedAt                DateTime      @updatedAt
 
-  assignee            UserProfile?    @relation("IssueAssignee", fields: [assigneeId], references: [id])
-  children            Issue[]         @relation("IssueHierarchy")
-  comments            IssueComment[]
-  creator             UserProfile     @relation("IssueCreator", fields: [createdById], references: [id])
-  history             IssueHistory[]
-  labels              IssueLabel[]
-  status              IssueStatus     @relation(fields: [statusId], references: [id])
-  parent              Issue?          @relation("IssueHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  project             Project         @relation(fields: [projectId], references: [id])
-  ProjectBoardColumnIssue      ProjectBoardColumnItem? 
+  assignee               UserProfile?            @relation("IssueAssignee", fields: [assigneeId], references: [id])
+  children               Issue[]                 @relation("IssueHierarchy")
+  comments               IssueComment[]
+  creator                UserProfile             @relation("IssueCreator", fields: [createdById], references: [id])
+  history                IssueHistory[]
+  labels                 IssueLabel[]
+  parent                 Issue?                  @relation("IssueHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  project                Project                 @relation(fields: [projectId], references: [id])
+  projectBoardColumnItem ProjectBoardColumnItem?
 }
 
 model IssueComment {
-  authorId            BigInt
-  createdAt           DateTime        @default(now())
-  id                  BigInt          @id @default(autoincrement())
-  issueId             BigInt
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  text                String
-  updatedAt           DateTime        @default(now())
-  parentId            BigInt?
+  authorId  BigInt
+  createdAt DateTime @default(now())
+  id        BigInt   @id @default(autoincrement())
+  issueId   BigInt
+  publicId  String   @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  text      String
+  updatedAt DateTime @updatedAt
+  parentId  BigInt?
 
-  author              UserProfile     @relation(fields: [authorId], references: [id])
-  issue               Issue           @relation(fields: [issueId], references: [id])
-  likedBy            UserProfile[]   @relation("IssueCommentLikes")
-  parent              IssueComment?   @relation("IssueCommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies            IssueComment[]  @relation("IssueCommentReplies")
+  author  UserProfile    @relation(fields: [authorId], references: [id])
+  issue   Issue          @relation(fields: [issueId], references: [id])
+  likedBy UserProfile[]  @relation("IssueCommentLikes")
+  parent  IssueComment?  @relation("IssueCommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies IssueComment[] @relation("IssueCommentReplies")
 }
 
 model Address {
-  apartmentNumber     String?
-  city                String
-  country             String
-  houseNumber         String
-  id                  BigInt          @id @default(autoincrement())
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  state               String
-  street              String
-  zipCode             String
+  apartmentNumber String?
+  city            String
+  country         String
+  houseNumber     String
+  id              BigInt  @id @default(autoincrement())
+  publicId        String  @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  state           String
+  street          String
+  zipCode         String
 
-  users               UserProfile[]
+  users UserProfile[]
 }
 
 model Team {
-  createdAt           DateTime        @default(now())
-  description         String
-  id                  BigInt          @id @default(autoincrement())
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  name                String
-  updatedAt           DateTime        @default(now())
+  createdAt   DateTime @default(now())
+  description String
+  id          BigInt   @id @default(autoincrement())
+  publicId    String   @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  name        String
+  updatedAt   DateTime @updatedAt
 
-  members             UserProfile[]
-  project             Project[]
+  members UserProfile[]
+  project Project[]
 }
 
 model IssueHistory {
-  authorId            BigInt
-  changedAt           DateTime        @default(now())
-  change              Json
-  id                  BigInt          @id @default(autoincrement())
-  issueId             BigInt
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  authorId  BigInt
+  changedAt DateTime @default(now())
+  change    Json
+  id        BigInt   @id @default(autoincrement())
+  issueId   BigInt
+  publicId  String   @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  issue               Issue           @relation(fields: [issueId], references: [id])
-  author              UserProfile     @relation(fields: [authorId], references: [id])
+  issue  Issue       @relation(fields: [issueId], references: [id])
+  author UserProfile @relation(fields: [authorId], references: [id])
 }
 
 model Project {
-  description         String
-  id                  BigInt          @id @default(autoincrement())
-  name                String
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  description String
+  id          BigInt @id @default(autoincrement())
+  name        String
+  publicId    String @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  issue               Issue[]
-  issueLabel          IssueLabel[]
-  projectBoard        ProjectBoard[]
-  team                Team[]
-  user                UserProfile[]
+  issue        Issue[]
+  issueLabel   IssueLabel[]
+  projectBoard ProjectBoard[]
+  team         Team[]
+  user         UserProfile[]
 }
 
 model IssueLabel {
-  color               String
-  id                  BigInt          @id @default(autoincrement())
-  name                String
-  projectId           BigInt
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  color     String
+  id        BigInt @id @default(autoincrement())
+  name      String
+  projectId BigInt
+  publicId  String @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  issues              Issue[]
-  project             Project         @relation(fields: [projectId], references: [id])
+  issues  Issue[]
+  project Project @relation(fields: [projectId], references: [id])
 }
 
 model ProjectBoard {
-  id                  BigInt          @id @default(autoincrement())
-  description         String
-  name                String
-  projectId           BigInt
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          BigInt @id @default(autoincrement())
+  description String
+  name        String
+  projectId   BigInt
+  publicId    String @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  project             Project         @relation(fields: [projectId], references: [id])
-  columns             ProjectBoardColumn[]
+  project Project              @relation(fields: [projectId], references: [id])
+  columns ProjectBoardColumn[]
 }
 
 model ProjectBoardColumn {
-  id                  BigInt          @id @default(autoincrement())
-  name                String
-  description         String          @default("")
-  projectBoardId      BigInt
-  position            Float 
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  id             BigInt @id @default(autoincrement())
+  name           String
+  description    String @default("")
+  projectBoardId BigInt
+  position       Float
+  publicId       String @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  columnIssues              ProjectBoardColumnItem[]
-  projectBoard        ProjectBoard    @relation(fields: [projectBoardId], references: [id], onDelete: Cascade)
+  columnIssues ProjectBoardColumnItem[]
+  projectBoard ProjectBoard             @relation(fields: [projectBoardId], references: [id], onDelete: Cascade)
 }
 
 model ProjectBoardColumnItem {
-  id                        BigInt          @id @default(autoincrement())
-  issueId                   BigInt          @unique
-  position                  Float
-  projectBoardColumnId      BigInt
-  publicId                  String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  id                   BigInt @id @default(autoincrement())
+  issueId              BigInt @unique
+  position             Float
+  projectBoardColumnId BigInt
+  publicId             String @unique @default(dbgenerated("uuidv7()")) @db.Uuid
 
-  issue                     Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  projectBoardColumn         ProjectBoardColumn @relation(fields: [projectBoardColumnId], references: [id], onDelete: Cascade)
-	@@map("ProjectBoardColumnIssue")
-}
-
-model IssueStatus {
-  color               String?
-  id                  BigInt          @id @default(autoincrement())
-  name                String
-  projectBoardId      BigInt?
-  publicId            String          @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-
-  issues              Issue[]
-
-  @@unique([name, projectBoardId])
+  issue              Issue              @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  projectBoardColumn ProjectBoardColumn @relation(fields: [projectBoardColumnId], references: [id], onDelete: Cascade)
 }
 
 model File {
-  id                      BigInt              @id @default(autoincrement())
-  filename                String              
-  publicId                String              @unique @default(dbgenerated("uuidv7()")) @db.Uuid
-  s3Key                   String              @unique
-  status                  FileStatus          @default(PENDING) 
-  uploadedAt              DateTime            @default(now())
-  uploadedById            BigInt?
+  id           BigInt     @id @default(autoincrement())
+  filename     String
+  publicId     String     @unique @default(dbgenerated("uuidv7()")) @db.Uuid
+  s3Key        String     @unique
+  status       FileStatus @default(PENDING)
+  uploadedAt   DateTime   @default(now())
+  uploadedById BigInt?
 
-  userCoverImage          UserProfile[]       @relation("UserCoverImage")
-  uploadedBy              UserProfile?        @relation("UploadedByUser", fields: [uploadedById], references: [id], onDelete: SetNull)
-  userProfilePicture      UserProfile[]       @relation("UserProfilePicture")
+  userCoverImage     UserProfile[] @relation("UserCoverImage")
+  uploadedBy         UserProfile?  @relation("UploadedByUser", fields: [uploadedById], references: [id], onDelete: SetNull)
+  userProfilePicture UserProfile[] @relation("UserProfilePicture")
 }

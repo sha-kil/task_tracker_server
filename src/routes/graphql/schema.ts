@@ -2,7 +2,6 @@ import { buildSchema } from "graphql"
 
 export const schema = buildSchema(`
   type Status {
-    color: String
     id: ID! 
     name: String
   }
@@ -115,7 +114,7 @@ export const schema = buildSchema(`
   }
 
   type Query {
-    issueTable(ids: [ID!]): [IssueTable!]!
+    issueTable(ids: [ID!], projectId: String): [IssueTable!]!
     commentsWithUser(issueId: ID!): [CommentWithUser!]!
     userWithAddress(userId: ID!): UserWithAddress!
     userIssueList(userId: ID!): [IssueTable!]!

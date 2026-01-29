@@ -19,10 +19,8 @@ export const IssueGETSchema = z.object({
   parentId: z.uuidv7().nullable().default(null),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   projectId: z.uuidv7(),
-  projectBoardId: z.uuidv7().nullable().default(null),
+  projectBoardColumnItemId: z.uuidv7().nullable().default(null),
   startDate: z.iso.datetime().nullable().default(null),
-  statusId: z.uuidv7(),
-  statusOptionIds: z.array(z.uuidv7()).default([]),
   title: z.string(),
   type: z.enum(["EPIC", "STORY", "TASK"]),
   updatedAt: z.iso.datetime(),
@@ -35,7 +33,6 @@ export const IssueCreateSchema = IssueGETSchema.omit({
   createdById: true,
   id: true,
   labelIds: true,
-  statusOptionIds: true,
   updatedAt: true,
 })
 
@@ -46,6 +43,7 @@ export const IssueUpdateSchema = IssueGETSchema.omit({
   id: true,
   type: true,
   updatedAt: true,
+  projectBoardColumnItemId: true,
 })
   .extend({
     assigneeId: z.uuidv7().nullable(),
@@ -58,8 +56,6 @@ export const IssueUpdateSchema = IssueGETSchema.omit({
       .nullable(),
     labelIds: z.array(z.uuidv7()),
     parentId: z.uuidv7().nullable(),
-    projectBoardId: z.uuidv7().nullable(),
     startDate: z.iso.datetime().nullable(),
-    statusOptionIds: z.array(z.uuidv7()),
   })
   .partial()

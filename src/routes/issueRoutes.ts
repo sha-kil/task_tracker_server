@@ -1,5 +1,4 @@
 import { Router } from "express"
-import { getIssueStatusOptions } from "src/lib/issueStatus.js"
 import prisma from "src/lib/prisma.js"
 import {
   IssueCreateSchema,
@@ -58,28 +57,22 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Project not found" })
     }
 
-    let projectBoardId: bigint | null = null
-    if (issueCreateData.data.projectBoardId !== null) {
-      const projectBoard = await prisma.projectBoard.findUnique({
-        where: { publicId: issueCreateData.data.projectBoardId },
-      })
-      if (projectBoard === null) {
+    let projectBoardColumnItemId: bigint | null | undefined = undefined
+    if (issueCreateData.data.projectBoardColumnItemId !== null) {
+      const projectBoardColumnItem =
+        await prisma.projectBoardColumnItem.findUnique({
+          where: { publicId: issueCreateData.data.projectBoardColumnItemId },
+        })
+      if (projectBoardColumnItem === null) {
         console.error(
-          "Project board not found:",
-          issueCreateData.data.projectBoardId
+          "Project board column item not found:",
+          issueCreateData.data.projectBoardColumnItemId,
         )
-        return res.status(400).json({ error: "Project board not found" })
+        return res
+          .status(400)
+          .json({ error: "Project board column item not found" })
       }
-      projectBoardId = projectBoard.id
-    }
-
-    const status = await prisma.issueStatus.findUnique({
-      where: { publicId: issueCreateData.data.statusId },
-    })
-
-    if (status === null) {
-      console.error("Status not found:", issueCreateData.data.statusId)
-      return res.status(400).json({ error: "Status not found" })
+      projectBoardColumnItemId = projectBoardColumnItem.id
     }
 
     const {
@@ -87,30 +80,33 @@ router.post("/", async (req: Request, res: Response) => {
       assigneeId: _assigneeId,
       parentId: _parentId,
       projectId,
-      statusId,
       assignee,
       parent,
       project: _project,
-      status: _status,
       creator,
-      projectBoard: _projectBoard,
+      projectBoardColumnItem: _projectBoardColumnItem,
       ...newIssue
     } = await prisma.issue.create({
       data: {
-        ...issueCreateData.data,
         assigneeId: assigneeId,
         createdById: req.userId,
+        description: issueCreateData.data.description,
+        dueDate: issueCreateData.data.dueDate,
         parentId: parentId,
+        priority: issueCreateData.data.priority,
         projectId: project.id,
-        statusId: status.id,
-        projectBoardId: projectBoardId,
+        ...(projectBoardColumnItemId !== undefined && {
+          projectBoardColumnItemId: projectBoardColumnItemId,
+        }),
+        title: issueCreateData.data.title,
+        startDate: issueCreateData.data.startDate,
+        type: issueCreateData.data.type,
       },
       include: {
         assignee: true,
         parent: true,
         project: true,
-        status: true,
-        projectBoard: true,
+        projectBoardColumnItem: true,
         creator: true,
       },
     })
@@ -122,8 +118,7 @@ router.post("/", async (req: Request, res: Response) => {
       createdById: creator.publicId,
       parentId: parent?.publicId || null,
       projectId: _project.publicId,
-      projectBoardId: _projectBoard?.publicId || null,
-      statusId: _status.publicId,
+      projectBoardColumnItemId: _projectBoardColumnItem?.publicId || null,
       dueDate: newIssue.dueDate?.toISOString() || null,
       startDate: newIssue.startDate?.toISOString() || null,
       createdAt: newIssue.createdAt.toISOString(),
@@ -164,8 +159,11 @@ router.get("/:id", async (req: Request, res: Response) => {
         labels: true,
         parent: true,
         project: true,
-        projectBoard: true,
-        status: true,
+        projectBoardColumnItem: {
+          include: {
+            projectBoardColumn: true,
+          },
+        },
       },
     })
 
@@ -183,12 +181,9 @@ router.get("/:id", async (req: Request, res: Response) => {
       labels,
       parent,
       project,
-      projectBoard,
-      status,
+      projectBoardColumnItem,
       ...issue
     } = issueData
-
-    const issueStatuses = (await getIssueStatusOptions(issue.publicId)) ?? []
 
     const responseData = IssueGETSchema.safeParse({
       ...issue,
@@ -200,9 +195,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       labelIds: labels.map((label) => label.publicId),
       parentId: parent?.publicId || null,
       projectId: project.publicId,
-      projectBoardId: projectBoard?.publicId || null,
-      statusId: status.publicId,
-      statusOptionIds: issueStatuses.map((status) => status.id),
+      projectBoardColumnItemId: projectBoardColumnItem?.publicId || null,
       dueDate: issue.dueDate?.toISOString() || null,
       startDate: issue.startDate?.toISOString() || null,
       createdAt: issue.createdAt.toISOString(),
@@ -356,38 +349,6 @@ router.patch("/:id", async (req: Request, res: Response) => {
       }
     }
 
-    let projectBoardId: bigint | null | undefined = undefined
-    if (issueUpdateData.data.projectBoardId !== undefined) {
-      if (issueUpdateData.data.projectBoardId === null) {
-        projectBoardId = null
-      } else {
-        const projectBoard = await prisma.projectBoard.findUnique({
-          where: {
-            publicId: issueUpdateData.data.projectBoardId,
-            project: { id: projectId },
-          },
-        })
-        if (projectBoard === null) {
-          throw new HttpError(400, "Project board not found")
-        }
-        projectBoardId = projectBoard.id
-      }
-    }
-
-    let statusId: bigint | undefined = undefined
-    if (issueUpdateData.data.statusId !== undefined) {
-      const status = await prisma.issueStatus.findUnique({
-        where: {
-          publicId: issueUpdateData.data.statusId,
-          projectBoardId: projectBoardId ?? null,
-        },
-      })
-      if (status === null) {
-        throw new HttpError(400, "Status not found")
-      }
-      statusId = status.id
-    }
-
     const {
       assignee,
       children,
@@ -395,10 +356,9 @@ router.patch("/:id", async (req: Request, res: Response) => {
       creator,
       history,
       labels,
-      status,
       parent,
       project,
-      projectBoard,
+      projectBoardColumnItem,
       publicId,
       ...issueRest
     } = await prisma.issue.update({
@@ -455,19 +415,6 @@ router.patch("/:id", async (req: Request, res: Response) => {
               },
             }
           : {}),
-        ...(projectBoardId !== undefined
-          ? {
-              projectBoard:
-                projectBoardId !== null
-                  ? { connect: { id: projectBoardId } }
-                  : { disconnect: true },
-            }
-          : {}),
-        ...(statusId !== undefined
-          ? {
-              status: { connect: { id: statusId } },
-            }
-          : {}),
         ...(issueUpdateData.data.startDate !== undefined
           ? { startDate: issueUpdateData.data.startDate }
           : {}),
@@ -483,12 +430,15 @@ router.patch("/:id", async (req: Request, res: Response) => {
         creator: true,
         history: true,
         labels: true,
-        status: true,
         parent: true,
         project: true,
-        projectBoard: {
+        projectBoardColumnItem: {
           include: {
-            issueStatuses: true,
+            projectBoardColumn: {
+              include: {
+                projectBoard: true,
+              },
+            },
           },
         },
       },
@@ -504,10 +454,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
       labelIds: labels.map((label) => label.publicId),
       parentId: parent?.publicId || null,
       projectId: project.publicId,
-      projectBoardId: projectBoard?.publicId || null,
-      statusId: status.publicId,
-      statusOptionIds:
-        projectBoard?.issueStatuses.map((status) => status.publicId) || [],
+      projectBoardId:
+        projectBoardColumnItem?.projectBoardColumn?.projectBoard?.publicId ||
+        null,
+      projectBoardColumnItemId: projectBoardColumnItem?.publicId || null,
       dueDate: issueRest.dueDate?.toISOString() || null,
       startDate: issueRest.startDate?.toISOString() || null,
       createdAt: issueRest.createdAt.toISOString(),

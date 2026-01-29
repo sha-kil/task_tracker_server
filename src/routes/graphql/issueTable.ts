@@ -1,32 +1,42 @@
 import prisma from "src/lib/prisma.js"
 
 export async function issueTable(
-  args: { ids: string[] | null },
-  context: { userId?: bigint }
+  args: { ids: string[] | null, projectId: string | null },
+  context: { userId?: bigint },
 ) {
   const userId = context.userId
   if (userId === undefined) {
     throw new Error("Unauthorized")
   }
 
-  const condition = {
-    where: {
-      ...(args.ids !== null
-        ? { publicId: { in: args.ids } }
-        : {
-            OR: [{ createdById: userId }, { assigneeId: userId }],
-          }),
-    },
+  const condition = {}
+  if( args.ids !== null ) {
+    // Fetch by specific issue IDs
+    Object.assign(condition, {
+      publicId: { in: args.ids },
+    })
+  } else if( args.projectId !== null ) {
+    const project = await prisma.project.findFirst({
+      where: {
+        publicId: args.projectId,
+      }
+    })
+    if( project === null ) {
+      throw new Error("Project not found")
+    }
+    Object.assign(condition, {
+      projectId: project.id,
+    })
+  } else {
+    throw new Error("Either ids or projectId must be provided")
   }
 
   const issues = await prisma.issue.findMany({
-    ...condition,
+    where: condition,
     include: {
-      status: {
-        select: {
-          publicId: true,
-          name: true,
-          color: true,
+      projectBoardColumnItem: {
+        include: {
+          projectBoardColumn: true,
         },
       },
       labels: {
@@ -49,6 +59,8 @@ export async function issueTable(
       assignee = assigneeName
     }
 
+    const projectBoardColumn = issue.projectBoardColumnItem?.projectBoardColumn
+
     return {
       assignee,
       childrenIds: issue.children.map((child) => child.publicId),
@@ -57,14 +69,17 @@ export async function issueTable(
       id: issue.publicId,
       labels: issue.labels.map((label) => label.name),
       priority: issue.priority,
-      status: {
-        color: issue.status.color,
-        id: issue.status.publicId,
-        name: issue.status.name,
-      },
+      ...(projectBoardColumn !== undefined
+        ? {
+            status: {
+              id: projectBoardColumn.publicId,
+              name: projectBoardColumn.name,
+            },
+          }
+        : {}),
       title: issue.title,
     }
-  })
+  }).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 
   return response
 }

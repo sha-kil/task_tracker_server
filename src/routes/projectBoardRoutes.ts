@@ -50,7 +50,6 @@ router.get("/", async (req: Request, res: Response) => {
                         userCredential: true,
                       },
                     },
-                    status: true,
                   },
                 },
               },
@@ -80,7 +79,7 @@ router.get("/", async (req: Request, res: Response) => {
             issueId: columnIssue.issue.publicId,
             title: columnIssue.issue.title,
             description: columnIssue.issue.description,
-            status: columnIssue.issue.status.name,
+            status: column.name,
             assignee:
               parsedAssigneeResult !== null && parsedAssigneeResult.success
                 ? {
@@ -164,7 +163,6 @@ router.get("/:id", async (req: Request, res: Response) => {
                         userCredential: true,
                       },
                     },
-                    status: true,
                   },
                 },
               },
@@ -233,7 +231,7 @@ router.get("/:id", async (req: Request, res: Response) => {
                           email: parsedAssigneeResult.data.email ?? "",
                         }
                       : null,
-                  dueDate: issue.dueDate?.toISOString() ?? null,
+                  dueDate: issue.dueDate ?? null,
                 }
               })
               .sort((a, b) => a.position - b.position),
@@ -382,7 +380,6 @@ router.patch("/:id", async (req: Request, res: Response) => {
                         userCredential: true,
                       },
                     },
-                    status: true,
                   },
                 },
               },
@@ -424,7 +421,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
                   title: issue.title,
                   description: issue.description,
                   position: columnIssue.position,
-                  status: issue.status.name,
+                  status: column.name,
                   assignee:
                     parsedAssigneeResult !== null &&
                     parsedAssigneeResult.success

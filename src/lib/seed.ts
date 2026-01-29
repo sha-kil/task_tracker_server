@@ -121,42 +121,12 @@ async function main() {
     select: { id: true },
   })
 
-  const backlogStatus = await prisma.issueStatus.create({
-    data: {
-      name: "backlog",
-      color: "#808080",
-      projectBoardId: null,
-    },
-  })
-
-  await prisma.issueStatus.create({
-    data: {
-      name: "To do",
-      color: "#0000FF",
-    },
-  })
-
-  await prisma.issueStatus.create({
-    data: {
-      name: "In progress",
-      color: "#FFA500",
-    },
-  })
-
-  await prisma.issueStatus.create({
-    data: {
-      name: "Done",
-      color: "#008000",
-    },
-  })
-
   const issue = await prisma.issue.create({
     data: {
       createdById: user1.profile.id,
       description: "This is the first issue in the project.",
       priority: "medium",
       projectId: project.id,
-      statusId: backlogStatus.id,
       title: "Initial Issue",
       type: "TASK",
       labels: {
@@ -171,7 +141,6 @@ async function main() {
       description: "This is the second issue in the project.",
       priority: "high",
       projectId: project.id,
-      statusId: backlogStatus.id,
       title: "Second Issue",
       type: "EPIC",
       labels: {
@@ -180,7 +149,7 @@ async function main() {
     },
   })
 
-  await prisma.projectBoardColumn.create({
+  const toDoColumn = await prisma.projectBoardColumn.create({
     data: {
       name: "To Do",
       projectBoardId: defaultProjectBoard.id,
@@ -196,7 +165,12 @@ async function main() {
     },
   })
 
-  await prisma.projectBoardColumn.create({
+  await prisma.issue.update({
+    where: { id: issue.id },
+    data: { projectBoardColumnItemId: toDoColumn.id }
+  })
+
+  const inProgressColumn = await prisma.projectBoardColumn.create({
     data: {
       name: "In Progress",
       projectBoardId: defaultProjectBoard.id,
@@ -210,6 +184,11 @@ async function main() {
         ],
       },
     },
+  })
+
+  await prisma.issue.update({
+    where: { id: issue2.id },
+    data: { projectBoardColumnItemId: inProgressColumn.id }
   })
 
   await prisma.projectBoardColumn.create({

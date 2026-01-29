@@ -9,7 +9,7 @@ export const ProjectBoardColumnItemAssigneeSchema = z.object({
 export const ProjectBoardColumnItemGetSchema = z.object({
   assignee: ProjectBoardColumnItemAssigneeSchema.nullable(),
   description: z.string().max(1000),
-  dueDate: z.string().nullable(),
+  dueDate: z.date().nullable(),
   id: z.uuidv7(),
   issueId: z.uuidv7(),
   title: z.string().min(1).max(100),
