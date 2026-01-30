@@ -57,24 +57,6 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Project not found" })
     }
 
-    let projectBoardColumnItemId: bigint | null | undefined = undefined
-    if (issueCreateData.data.projectBoardColumnItemId !== null) {
-      const projectBoardColumnItem =
-        await prisma.projectBoardColumnItem.findUnique({
-          where: { publicId: issueCreateData.data.projectBoardColumnItemId },
-        })
-      if (projectBoardColumnItem === null) {
-        console.error(
-          "Project board column item not found:",
-          issueCreateData.data.projectBoardColumnItemId,
-        )
-        return res
-          .status(400)
-          .json({ error: "Project board column item not found" })
-      }
-      projectBoardColumnItemId = projectBoardColumnItem.id
-    }
-
     const {
       id,
       assigneeId: _assigneeId,
@@ -95,9 +77,6 @@ router.post("/", async (req: Request, res: Response) => {
         parentId: parentId,
         priority: issueCreateData.data.priority,
         projectId: project.id,
-        ...(projectBoardColumnItemId !== undefined && {
-          projectBoardColumnItemId: projectBoardColumnItemId,
-        }),
         title: issueCreateData.data.title,
         startDate: issueCreateData.data.startDate,
         type: issueCreateData.data.type,
@@ -118,7 +97,6 @@ router.post("/", async (req: Request, res: Response) => {
       createdById: creator.publicId,
       parentId: parent?.publicId || null,
       projectId: _project.publicId,
-      projectBoardColumnItemId: _projectBoardColumnItem?.publicId || null,
       dueDate: newIssue.dueDate?.toISOString() || null,
       startDate: newIssue.startDate?.toISOString() || null,
       createdAt: newIssue.createdAt.toISOString(),
@@ -195,7 +173,6 @@ router.get("/:id", async (req: Request, res: Response) => {
       labelIds: labels.map((label) => label.publicId),
       parentId: parent?.publicId || null,
       projectId: project.publicId,
-      projectBoardColumnItemId: projectBoardColumnItem?.publicId || null,
       dueDate: issue.dueDate?.toISOString() || null,
       startDate: issue.startDate?.toISOString() || null,
       createdAt: issue.createdAt.toISOString(),
@@ -457,7 +434,6 @@ router.patch("/:id", async (req: Request, res: Response) => {
       projectBoardId:
         projectBoardColumnItem?.projectBoardColumn?.projectBoard?.publicId ||
         null,
-      projectBoardColumnItemId: projectBoardColumnItem?.publicId || null,
       dueDate: issueRest.dueDate?.toISOString() || null,
       startDate: issueRest.startDate?.toISOString() || null,
       createdAt: issueRest.createdAt.toISOString(),

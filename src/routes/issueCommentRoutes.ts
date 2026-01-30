@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from "express"
 import { HttpError } from "src/lib/httpError.js"
 import { getUserByCredentialId } from "src/lib/userProfile.js"
+import { handleError } from "src/lib/handleError.js"
 
 const router = Router()
 
@@ -167,6 +168,86 @@ router.post("/", async (req, res) => {
       })
   }
 })
+
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    const commentId = req.params.id
+    if (commentId === undefined) {
+      throw new HttpError(400, "Comment ID is required")
+    }
+
+    const existingComment = await prisma.issueComment.findUnique({
+      where: {
+        publicId: commentId,
+      },
+      include: {
+        author: {
+          include: {
+            userCredential: true,
+          },
+        },
+      },
+    })
+    if (existingComment === null) {
+      throw new HttpError(404, "Comment not found")
+    }
+
+    const commentOwner = existingComment.author.userCredential.id === req.userId
+    if (!commentOwner) {
+      throw new HttpError(403, "Forbidden")
+    }
+
+    // Use transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // First, traverse and collect all descendant publicIds (BFS approach)
+      const toVisit: string[] = [commentId]
+      const collectedIds = new Set<string>()
+
+      while (toVisit.length > 0) {
+        const currentId = toVisit.shift()!
+
+        if (collectedIds.has(currentId)) {
+          continue
+        }
+
+        collectedIds.add(currentId)
+
+        // Find the comment by publicId to get its internal id
+        const currentComment = await tx.issueComment.findUnique({
+          where: { publicId: currentId },
+        })
+        if (currentComment === null) {
+          continue
+        }
+
+        // Find all direct children of this comment
+        const children = await tx.issueComment.findMany({
+          where: { parentId: currentComment.id },
+          select: { publicId: true },
+        })
+
+        // Add children to visit queue
+        for (const child of children) {
+          if (!collectedIds.has(child.publicId)) {
+            toVisit.push(child.publicId)
+          }
+        }
+      }
+
+      // Delete all collected comments atomically using deleteMany
+      await tx.issueComment.deleteMany({
+        where: { publicId: { in: Array.from(collectedIds) } },
+      })
+    })
+
+    return res.status(204).send()
+  } catch (error: HttpError | unknown) {
+    return handleError(error, res)
+  }})
 
 router.patch("/:id", async (req: Request, res: Response) => {
   try {

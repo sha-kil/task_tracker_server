@@ -19,7 +19,6 @@ export const IssueGETSchema = z.object({
   parentId: z.uuidv7().nullable().default(null),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   projectId: z.uuidv7(),
-  projectBoardColumnItemId: z.uuidv7().nullable().default(null),
   startDate: z.iso.datetime().nullable().default(null),
   title: z.string(),
   type: z.enum(["EPIC", "STORY", "TASK"]),
@@ -37,13 +36,11 @@ export const IssueCreateSchema = IssueGETSchema.omit({
 })
 
 export const IssueUpdateSchema = IssueGETSchema.omit({
-  commentIds: true,
   createdAt: true,
   createdById: true,
   id: true,
   type: true,
   updatedAt: true,
-  projectBoardColumnItemId: true,
 })
   .extend({
     assigneeId: z.uuidv7().nullable(),
