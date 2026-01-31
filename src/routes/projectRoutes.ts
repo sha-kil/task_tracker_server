@@ -23,13 +23,21 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
           },
         },
       },
+      include: {
+        projectBoard: true
+      }
     })
 
     const responseData = projects.map((project) => {
-      const { id, publicId, ...projectWithoutId } = project
+      const { id, publicId, projectBoard, ...projectWithoutId } = project
       const parsedProject = ProjectGETSchema.safeParse({
         ...projectWithoutId,
         id: publicId,
+        boards: projectBoard.map((board) => ({
+          id: board.publicId,
+          name: board.name,
+          description: board.description,
+        })),
       })
       if (!parsedProject.success) {
         console.error(
