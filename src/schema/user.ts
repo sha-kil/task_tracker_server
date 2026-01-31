@@ -46,9 +46,18 @@ const UserBaseSchemaWithoutDefault = UserBaseSchema.omit({
 export const UserGETSchema = UserBaseSchema.omit({ password: true })
 
 export const UserCreateSchema = UserBaseSchema.omit({
-  id: true,
-  profilePictureUrl: true,
+  addressId: true,
   coverImageUrl: true,
+  department: true,
+  homePhone: true, 
+  id: true, 
+  lastActive: true,
+  organization: true,
+  position: true,
+  profilePictureUrl: true,
+  role: true,
+  teamId: true,
+  workPhone: true,
 })
 
 export const UserPATCHSchema = UserBaseSchemaWithoutDefault.omit({

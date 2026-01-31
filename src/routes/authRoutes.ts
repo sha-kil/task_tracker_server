@@ -6,10 +6,9 @@ import prisma from "src/lib/prisma.js"
 import { clearAuthCookie, setAuthCookie } from "src/lib/token.js"
 import { UserCreateSchema } from "src/schema/user.js"
 import type { Request, Response } from "express"
-import { getAddress } from "src/lib/address.js"
-import { getTeam } from "src/lib/team.js"
 import { HttpError } from "src/lib/httpError.js"
 import { getUserByCredentialId } from "src/lib/userProfile.js"
+import { Prisma } from "@prismaClient/client.js"
 
 const router = express.Router()
 
@@ -17,41 +16,77 @@ const PASSWORD_SALT_ROUNDS = env.PASSWORD_SALT_ROUNDS
 
 router.post("/register", async (req: Request, res: Response) => {
   try {
-    const {
-      success,
-      data: userPostInput,
-      error,
-    } = UserCreateSchema.safeParse(req.body)
-    if (!success) {
-      throw new HttpError(400, "Invalid user data: " + error.message)
+    if (req.userId) {
+      throw new HttpError(400, "Logged in users cannot register new users")
     }
-    const { email, password, ...profile } = userPostInput
 
-    const address = profile.addressId
-      ? await getAddress(profile.addressId)
-      : null
-    const team = profile.teamId ? await getTeam(profile.teamId) : null
+    const creationData = UserCreateSchema.safeParse(req.body)
+    if (!creationData.success) {
+      throw new HttpError(400, "Invalid user data")
+    }
 
-    const hashedPassword = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS)
-    const { id } = await prisma.userCredential.create({
-      data: {
-        email,
-        password: hashedPassword,
-        profile: {
-          create: {
-            ...profile,
-            addressId: address ? address.id : null,
-            teamId: team ? team.id : null,
+    const hashedPassword = await bcrypt.hash(
+      creationData.data.password,
+      PASSWORD_SALT_ROUNDS,
+    )
+
+    let newUser
+    try {
+      newUser = await prisma.userCredential.create({
+        data: {
+          email: creationData.data.email,
+          password: hashedPassword,
+          profile: {
+            create: {
+              firstName: creationData.data.firstName,
+              lastName: creationData.data.lastName,
+              project: {
+                create: {
+                  name: `${creationData.data.firstName}'s Project`,
+                  description: `Default project for ${creationData.data.firstName}`,
+                  projectBoard: {
+                    create: {
+                      name: "Default Board",
+                      description: "This is your default project board",
+                      columns: {
+                        create: [
+                          {
+                            name: "To Do",
+                            position: 1,
+                          },
+                          {
+                            name: "In Progress",
+                            position: 2,
+                          },
+                          { name: "Done", position: 3 },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
-      },
-    })
+        include: {
+          profile: true,
+        },
+      })
+    } catch (createError: unknown) {
+      if (
+        createError instanceof Prisma.PrismaClientKnownRequestError &&
+        createError.code === "P2002"
+      ) {
+        throw new HttpError(409, "Email already in use")
+      }
+      throw createError
+    }
 
-    const token = jwt.sign({ id: String(id) }, env.JWT_SECRET, {
+    const token = jwt.sign({ id: String(newUser.id) }, env.JWT_SECRET, {
       expiresIn: "1h",
     })
     setAuthCookie(res, token)
-    const userData = await getUserByCredentialId(id)
+    const userData = await getUserByCredentialId(newUser.id)
     res.status(201).json(userData)
   } catch (error: HttpError | unknown) {
     console.error("Error during user registration:", error)

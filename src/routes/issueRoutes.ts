@@ -7,20 +7,18 @@ import {
 } from "src/schema/Issue.js"
 import type { Request, Response } from "express"
 import { HttpError } from "src/lib/httpError.js"
+import { handleError } from "src/lib/handleError.js"
 
 const router = Router()
 
 router.post("/", async (req: Request, res: Response) => {
-  if (req.userId === undefined) {
-    console.error("Unauthorized access attempt to create issue")
-    return res.status(403).json({ error: "Forbidden" })
-  }
-
   try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Unauthorized access attempt to create issue")
+    }
     const issueCreateData = IssueCreateSchema.safeParse(req.body)
     if (!issueCreateData.success) {
-      console.error("Invalid issue data:", issueCreateData.error)
-      return res.status(400).json({ error: "Invalid issue data" })
+      throw new HttpError(400, issueCreateData.error.message)
     }
 
     let assigneeId: bigint | null = null
@@ -29,8 +27,7 @@ router.post("/", async (req: Request, res: Response) => {
         where: { publicId: issueCreateData.data.assigneeId },
       })
       if (assignee === null) {
-        console.error("Assignee not found:", issueCreateData.data.assigneeId)
-        return res.status(400).json({ error: "Assignee not found" })
+        throw new HttpError(400, "Assignee not found")
       }
 
       assigneeId = assignee.id
@@ -42,8 +39,7 @@ router.post("/", async (req: Request, res: Response) => {
         where: { publicId: issueCreateData.data.parentId },
       })
       if (parentIssue === null) {
-        console.error("Parent issue not found:", issueCreateData.data.parentId)
-        return res.status(400).json({ error: "Parent issue not found" })
+        throw new HttpError(400, "Parent issue not found")
       }
       parentId = parentIssue.id
     }
@@ -53,8 +49,7 @@ router.post("/", async (req: Request, res: Response) => {
     })
 
     if (project === null) {
-      console.error("Project not found:", issueCreateData.data.projectId)
-      return res.status(400).json({ error: "Project not found" })
+      throw new HttpError(400, "Project not found")
     }
 
     const {
@@ -103,16 +98,15 @@ router.post("/", async (req: Request, res: Response) => {
       updatedAt: newIssue.updatedAt.toISOString(),
     })
     if (!responseData.success) {
-      console.error("Failed to parse created issue: ", responseData.error)
-      return res.status(500).json({
-        error: "Failed to parse created issue",
-      })
+      throw new HttpError(
+        500,
+        "Failed to parse created issue: " + responseData.error.message,
+      )
     }
 
     res.status(201).json(responseData.data)
-  } catch (error) {
-    console.error("Failed to create issue: ", error)
-    res.status(500).json({ error: "Failed to create issue" })
+  } catch (error: HttpError | unknown) {
+    return handleError(error, res)
   }
 })
 
