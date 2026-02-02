@@ -425,9 +425,6 @@ router.patch("/:id", async (req: Request, res: Response) => {
       labelIds: labels.map((label) => label.publicId),
       parentId: parent?.publicId || null,
       projectId: project.publicId,
-      projectBoardId:
-        projectBoardColumnItem?.projectBoardColumn?.projectBoard?.publicId ||
-        null,
       dueDate: issueRest.dueDate?.toISOString() || null,
       startDate: issueRest.startDate?.toISOString() || null,
       createdAt: issueRest.createdAt.toISOString(),

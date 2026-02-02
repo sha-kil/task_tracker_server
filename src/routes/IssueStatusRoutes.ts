@@ -68,7 +68,6 @@ router.get("/:issueId", async (req: Request, res: Response) => {
     if (projectBoard === null) {
       throw new HttpError(400, "Invalid project board")
     }
-
     const columns = projectBoard.columns
     const current = columns.find(
       (column) => column.columnIssues.some(issue => issue.id === projectBoardColumnItemId),

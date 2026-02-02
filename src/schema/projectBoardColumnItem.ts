@@ -18,8 +18,9 @@ export const ProjectBoardColumnItemGetSchema = z.object({
 
 export const ProjectBoardColumnItemCreateSchema = z.object({
   issueId: z.uuidv7(),
-  position: z.number(),
-  projectBoardColumnId: z.uuidv7(),
+  position: z.number().nullable(),
+  projectBoardColumnId: z.uuidv7().nullable(),
+  projectBoardId: z.uuidv7(),
 })
 
 export const ProjectBoardColumnItemUpdateSchema = z.object({
