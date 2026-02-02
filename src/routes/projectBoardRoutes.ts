@@ -228,6 +228,69 @@ router.patch("/:id", async (req: Request, res: Response) => {
   }
 })
 
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(403, "Unauthorized")
+    }
+
+    const projectBoardId = req.params.id
+    if (projectBoardId === undefined) {
+      throw new HttpError(400, "Project Board ID is undefined")
+    }
+
+    const projectBoard = await prisma.projectBoard.findFirst({
+      where: {
+        publicId: projectBoardId,
+        project: {
+          user: {
+            some: {
+              userCredential: { id: req.userId },
+            },
+          },
+        },
+      },
+      include: {
+        columns: {
+          include: {
+            columnIssues: true,
+          }
+        },
+      }
+    })
+
+    if (projectBoard === null) {
+      throw new HttpError(404, "Project Board not found")
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const column of projectBoard.columns) {
+        for (const issueItem of column.columnIssues) {
+          await tx.projectBoardColumnItem.delete({
+            where: { id: issueItem.id },
+          })
+        }
+
+        await tx.projectBoardColumn.delete({
+          where: { id: column.id },
+        })
+      }
+
+      await tx.projectBoard.delete({
+        where: { id: projectBoard.id },
+      })
+    })
+
+    res.sendStatus(204)
+  } catch (error: HttpError | unknown) {
+    console.error(error instanceof HttpError ? error.message : error)
+    res.status(error instanceof HttpError ? error.statusCode : 500).json({
+      error:
+        error instanceof HttpError ? error.message : "Internal Server Error",
+    })
+  }
+})
+
 async function getProjectBoardById(
   projectBoardId: string,
 ): Promise<z.infer<typeof ProjectBoardGETSchema>> {
