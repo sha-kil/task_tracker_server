@@ -66,7 +66,7 @@ router.get("/:issueId", async (req: Request, res: Response) => {
       },
     })
     if (projectBoard === null) {
-      throw new HttpError(400, "Invalid project board")
+      return res.status(200).json({ options: [], current: null }) 
     }
     const columns = projectBoard.columns
     const current = columns.find(
@@ -195,7 +195,7 @@ router.patch("/:issueId", async (req: Request, res: Response) => {
       },
     })
     if (projectBoard === null) {
-      throw new HttpError(400, "Invalid project board")
+      return res.status(200).json({ options: [], current: null })
     }
 
     const columns = projectBoard.columns

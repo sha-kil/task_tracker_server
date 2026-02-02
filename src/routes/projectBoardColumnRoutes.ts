@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from "express"
+import { handleError } from "src/lib/handleError.js"
 import { HttpError } from "src/lib/httpError.js"
 import prisma from "src/lib/prisma.js"
 import {
@@ -143,6 +144,55 @@ router.patch("/:columnId", async (req: Request, res: Response) => {
       message:
         error instanceof HttpError ? error.message : "Internal server error",
     })
+  }
+})
+
+router.delete("/:columnId", async (req: Request, res: Response) => {
+  try {
+    if (req.userId === undefined) {
+      throw new HttpError(401, "Unauthorized")
+    }
+
+    const { columnId } = req.params
+    if (columnId === undefined) {
+      throw new HttpError(400, "Column ID is required")
+    }
+
+    const projectBoardColumn = await prisma.projectBoardColumn.findUnique({
+      where: {
+        publicId: columnId,
+        projectBoard: {
+          project: {
+            user: {
+              some: {
+                userCredential: {
+                  id: req.userId,
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    if (projectBoardColumn === null) {
+      throw new HttpError(404, "Project board column not found")
+    }
+    // delete column and its items atomically
+    await prisma.$transaction([
+      prisma.projectBoardColumnItem.deleteMany({
+        where: {
+          projectBoardColumnId: projectBoardColumn.id,
+        },
+      }),
+      prisma.projectBoardColumn.delete({
+        where: {
+          id: projectBoardColumn.id,
+        },
+      }),
+    ])
+    res.status(204).send()
+  } catch(error: HttpError | unknown) {
+    return handleError(error, res)
   }
 })
 
