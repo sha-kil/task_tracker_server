@@ -22,5 +22,4 @@ export const ProjectBoardCreateSchema = ProjectBoardGETSchema.omit({
 
 export const ProjectBoardUpdateSchema = ProjectBoardGETSchema.omit({
   id: true,
-  projectId: true,
 })

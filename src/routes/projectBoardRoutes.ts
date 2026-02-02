@@ -89,7 +89,7 @@ router.get("/", async (req: Request, res: Response) => {
                     email: parsedAssigneeResult.data.email,
                   }
                 : null,
-            dueDate: columnIssue.issue.dueDate,
+            dueDate: columnIssue.issue.dueDate?.toISOString() ?? null,
             position: columnIssue.position,
           })
           if (!parsedIssueData.success) {
@@ -221,7 +221,7 @@ router.get("/by-issue/:issueId", async (req: Request, res: Response) => {
                     email: parsedAssigneeResult.data.email,
                   }
                 : null,
-            dueDate: columnIssue.issue.dueDate,
+            dueDate: columnIssue.issue.dueDate?.toISOString() ?? null,
             position: columnIssue.position,
           })
           if (!parsedIssueData.success) {
@@ -359,7 +359,7 @@ router.get("/:id", async (req: Request, res: Response) => {
                           email: parsedAssigneeResult.data.email ?? "",
                         }
                       : null,
-                  dueDate: issue.dueDate ?? null,
+                  dueDate: issue.dueDate?.toISOString() ?? null,
                 }
               })
               .sort((a, b) => a.position - b.position),
@@ -455,6 +455,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
       req.body,
     )
     if (!projectBoardUpdateParsedResult.success) {
+      console.error(
+        "Invalid project board update data: ",
+        projectBoardUpdateParsedResult.error,
+      )
       throw new HttpError(400, "Invalid project board update data")
     }
 
@@ -560,6 +564,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
                         }
                       : null,
                   dueDate: issue.dueDate?.toISOString() ?? null,
+                  issueId: issue.publicId,
                 }
               })
               .sort((a, b) => a.position - b.position),
@@ -568,6 +573,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
         .sort((a, b) => a.position - b.position),
     })
     if (!parsedBoard.success) {
+      console.error(
+        "Error parsing updated project board data: ",
+        parsedBoard.error,
+      )
       throw new HttpError(500, "Failed to parse updated project board data")
     }
 

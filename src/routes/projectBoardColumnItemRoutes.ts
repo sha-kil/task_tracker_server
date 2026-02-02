@@ -62,7 +62,7 @@ router.get("/", async (req: Request, res: Response) => {
     const parsedResponse = ProjectBoardColumnItemGetSchema.safeParse({
       assignee: assignee?.data ?? null,
       description: boardItem.issue.description,
-      dueDate: boardItem.issue.dueDate,
+      dueDate: boardItem.issue.dueDate?.toISOString() ?? null,
       id: boardItem.publicId,
       issueId: issue.publicId,
       title: boardItem.issue.title,
@@ -201,7 +201,7 @@ router.post("/", async (req: Request, res: Response) => {
       const responseData = ProjectBoardColumnItemGetSchema.safeParse({
         assignee: parsedAssignee?.data ?? null,
         description: newBoardItem.issue.description,
-        dueDate: newBoardItem.issue.dueDate,
+        dueDate: newBoardItem.issue.dueDate?.toISOString() ?? null,
         id: newBoardItem.publicId,
         issueId: issue.publicId,
         title: newBoardItem.issue.title,
