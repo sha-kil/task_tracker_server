@@ -12,6 +12,7 @@ import {
   ProjectBoardColumnItemAssigneeSchema,
   ProjectBoardColumnItemGetSchema,
 } from "src/schema/projectBoardColumnItem.js"
+import type z from "zod"
 
 const router = express.Router()
 
@@ -38,96 +39,12 @@ router.get("/", async (req: Request, res: Response) => {
 
     const projectBoards = await prisma.projectBoard.findMany({
       where: { projectId: project.id },
-      include: {
-        project: true,
-        columns: {
-          include: {
-            columnIssues: {
-              include: {
-                issue: {
-                  include: {
-                    assignee: {
-                      include: {
-                        userCredential: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     })
 
-    const responseData = projectBoards.map((board) => {
-      const columns = board.columns.map((column) => {
-        const issues = column.columnIssues.map((columnIssue) => {
-          const parsedAssigneeResult =
-            columnIssue.issue.assignee !== null
-              ? ProjectBoardColumnItemAssigneeSchema.safeParse({
-                  id: columnIssue.issue.assignee.publicId,
-                  name:
-                    columnIssue.issue.assignee.firstName +
-                    " " +
-                    columnIssue.issue.assignee.lastName,
-                  email: columnIssue.issue.assignee.userCredential.email,
-                })
-              : null
-
-          const parsedIssueData = ProjectBoardColumnItemGetSchema.safeParse({
-            id: columnIssue.publicId,
-            issueId: columnIssue.issue.publicId,
-            title: columnIssue.issue.title,
-            description: columnIssue.issue.description,
-            status: column.name,
-            assignee:
-              parsedAssigneeResult !== null && parsedAssigneeResult.success
-                ? {
-                    id: parsedAssigneeResult.data.id,
-                    name: parsedAssigneeResult.data.name,
-                    email: parsedAssigneeResult.data.email,
-                  }
-                : null,
-            dueDate: columnIssue.issue.dueDate?.toISOString() ?? null,
-            position: columnIssue.position,
-          })
-          if (!parsedIssueData.success) {
-            console.error("Error parsing issue data: ", parsedIssueData.error)
-            throw new HttpError(500, "Failed to parse issue data")
-          }
-
-          return parsedIssueData.data
-        })
-        issues.sort((a, b) => a.position - b.position)
-        const parsedColumnData = ProjectBoardColumnSchema.safeParse({
-          id: column.publicId,
-          name: column.name,
-          position: column.position,
-          issues,
-        })
-        if (!parsedColumnData.success) {
-          console.error("Error parsing column data: ", parsedColumnData.error)
-          throw new HttpError(500, "Failed to parse column data")
-        }
-
-        return parsedColumnData.data
-      })
-
-      columns.sort((a, b) => a.position - b.position)
-      const parsedBoard = ProjectBoardGETSchema.safeParse({
-        id: board.publicId,
-        description: board.description,
-        name: board.name,
-        projectId: board.project.publicId,
-        columns,
-      })
-      if (!parsedBoard.success) {
-        console.error("Error parsing project board: ", parsedBoard.error)
-        throw new HttpError(500, "Failed to parse project board data")
-      }
-      return parsedBoard.data
-    })
+    const responseData = await Promise.all(projectBoards.map(async (board) => {
+      const projectBoard = await getProjectBoardById(board.publicId)
+      return projectBoard
+    }))
 
     res.json(responseData)
   } catch (error: HttpError | unknown) {
@@ -162,28 +79,7 @@ router.get("/by-issue/:issueId", async (req: Request, res: Response) => {
       include: {
         projectBoardColumn: {
           include: {
-            projectBoard: {
-              include: {
-                project: true,
-                columns: {
-                  include: {
-                    columnIssues: {
-                      include: {
-                        issue: {
-                          include: {
-                            assignee: {
-                              include: {
-                                userCredential: true,
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
+            projectBoard: true,
           },
         },
       },
@@ -192,75 +88,10 @@ router.get("/by-issue/:issueId", async (req: Request, res: Response) => {
       return res.status(200).json(null)
     }
 
-    const columns = boardColumnItem.projectBoardColumn.projectBoard.columns.map(
-      (column) => {
-        const issues = column.columnIssues.map((columnIssue) => {
-          const parsedAssigneeResult =
-            columnIssue.issue.assignee !== null
-              ? ProjectBoardColumnItemAssigneeSchema.safeParse({
-                  id: columnIssue.issue.assignee.publicId,
-                  name:
-                    columnIssue.issue.assignee.firstName +
-                    " " +
-                    columnIssue.issue.assignee.lastName,
-                  email: columnIssue.issue.assignee.userCredential.email,
-                })
-              : null
-
-          const parsedIssueData = ProjectBoardColumnItemGetSchema.safeParse({
-            id: columnIssue.publicId,
-            issueId: columnIssue.issue.publicId,
-            title: columnIssue.issue.title,
-            description: columnIssue.issue.description,
-            status: column.name,
-            assignee:
-              parsedAssigneeResult !== null && parsedAssigneeResult.success
-                ? {
-                    id: parsedAssigneeResult.data.id,
-                    name: parsedAssigneeResult.data.name,
-                    email: parsedAssigneeResult.data.email,
-                  }
-                : null,
-            dueDate: columnIssue.issue.dueDate?.toISOString() ?? null,
-            position: columnIssue.position,
-          })
-          if (!parsedIssueData.success) {
-            console.error("Error parsing issue data: ", parsedIssueData.error)
-            throw new HttpError(500, "Failed to parse issue data")
-          }
-
-          return parsedIssueData.data
-        })
-        issues.sort((a, b) => a.position - b.position)
-        const parsedColumnData = ProjectBoardColumnSchema.safeParse({
-          id: column.publicId,
-          name: column.name,
-          position: column.position,
-          issues,
-        })
-        if (!parsedColumnData.success) {
-          console.error("Error parsing column data: ", parsedColumnData.error)
-          throw new HttpError(500, "Failed to parse column data")
-        }
-
-        return parsedColumnData.data
-      },
+    const projectBoard = await getProjectBoardById(
+      boardColumnItem.projectBoardColumn.projectBoard.publicId,
     )
-    columns.sort((a, b) => a.position - b.position)
-
-    const parsedResponse = ProjectBoardGETSchema.safeParse({
-      id: boardColumnItem.projectBoardColumn.projectBoard.publicId,
-      description: boardColumnItem.projectBoardColumn.projectBoard.description,
-      name: boardColumnItem.projectBoardColumn.projectBoard.name,
-      projectId:
-        boardColumnItem.projectBoardColumn.projectBoard.project.publicId,
-      columns,
-    })
-    if (!parsedResponse.success) {
-      throw new HttpError(500, "Failed to parse project board data")
-    }
-
-    res.status(200).json(parsedResponse.data)
+    res.status(200).json(projectBoard)
   } catch (error: HttpError | unknown) {
     return handleError(error, res)
   }
@@ -276,105 +107,9 @@ router.get("/:id", async (req: Request, res: Response) => {
     if (projectBoardId === undefined) {
       throw new HttpError(400, "Project Board ID is undefined")
     }
-    const projectBoard = await prisma.projectBoard.findUnique({
-      where: { publicId: projectBoardId },
-      include: {
-        project: true,
-        columns: {
-          include: {
-            columnIssues: {
-              include: {
-                issue: {
-                  include: {
-                    assignee: {
-                      include: {
-                        userCredential: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    })
-    if (projectBoard === null) {
-      throw new HttpError(404, "Project Board not found")
-    }
 
-    const project = await prisma.project.findUnique({
-      where: { id: projectBoard.projectId },
-      include: {
-        user: {
-          where: {
-            userCredential: { id: req.userId },
-          },
-        },
-      },
-    })
-    if (project === null) {
-      throw new HttpError(404, "Project not found")
-    }
-
-    const { description, name, publicId, columns } = projectBoard
-
-    const parsedBoard = ProjectBoardGETSchema.safeParse({
-      id: publicId,
-      description: description,
-      name: name,
-      projectId: project.publicId,
-      columns: columns
-        .map((column) => {
-          return {
-            id: column.publicId,
-            name: column.name,
-            position: column.position,
-            issues: column.columnIssues
-              .map((columnIssue) => {
-                const issue = columnIssue.issue
-                const parsedAssigneeResult =
-                  issue.assignee !== null
-                    ? ProjectBoardColumnItemAssigneeSchema.safeParse({
-                        id: issue.assignee.publicId,
-                        name:
-                          issue.assignee.firstName +
-                          " " +
-                          issue.assignee.lastName,
-                        email: issue.assignee.userCredential.email,
-                      })
-                    : null
-                return {
-                  id: columnIssue.publicId,
-                  title: issue.title,
-                  description: issue.description,
-                  position: columnIssue.position,
-                  issueId: issue.publicId,
-                  assignee:
-                    parsedAssigneeResult !== null &&
-                    parsedAssigneeResult.success
-                      ? {
-                          id: parsedAssigneeResult.data.id,
-                          name: parsedAssigneeResult.data.name ?? "",
-                          email: parsedAssigneeResult.data.email ?? "",
-                        }
-                      : null,
-                  dueDate: issue.dueDate?.toISOString() ?? null,
-                }
-              })
-              .sort((a, b) => a.position - b.position),
-          }
-        })
-        .sort((a, b) => a.position - b.position),
-    })
-    if (!parsedBoard.success) {
-      throw new HttpError(
-        500,
-        "Failed to parse project board data: " + parsedBoard.error.message,
-      )
-    }
-
-    res.json(parsedBoard.data)
+    const projectBoard = await getProjectBoardById(projectBoardId)
+    res.json(projectBoard)
   } catch (error: HttpError | unknown) {
     console.error(error instanceof HttpError ? error.message : error)
     res.status(error instanceof HttpError ? error.statusCode : 500).json({
@@ -411,29 +146,10 @@ router.post("/", async (req, res) => {
     const { description, name } = projectBoardPostData.data
     const newProjectBoard = await prisma.projectBoard.create({
       data: { description, name, projectId: project.id },
-      include: {
-        project: true,
-      },
     })
 
-    const {
-      id,
-      publicId,
-      project: projectData,
-      ...projectBoardWithoutId
-    } = newProjectBoard
-    const responseData = ProjectBoardGETSchema.safeParse({
-      ...projectBoardWithoutId,
-      id: newProjectBoard.publicId,
-      projectId: projectData.publicId,
-    })
-
-    if (!responseData.success) {
-      console.error("Error parsing response data: ", responseData.error)
-      return res.status(500).json({ error: "Internal server error" })
-    }
-
-    res.status(201).json(responseData.data)
+    const responseData = await getProjectBoardById(newProjectBoard.publicId)
+    res.status(201).json(responseData)
   } catch (error) {
     console.error("Error creating project board: ", error)
     res.status(500).json({ error: "Failed to create project board" })
@@ -499,88 +215,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
         }),
         ...(updatedData.name !== undefined && { name: updatedData.name }),
       },
-      include: {
-        project: true,
-        columns: {
-          include: {
-            columnIssues: {
-              include: {
-                issue: {
-                  include: {
-                    assignee: {
-                      include: {
-                        userCredential: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     })
 
-    const { description, name, project, publicId, columns } =
-      updatedProjectBoard
-    const parsedBoard = ProjectBoardGETSchema.safeParse({
-      id: publicId,
-      description: description,
-      name: name,
-      projectId: project.publicId,
-      columns: columns
-        .map((column) => {
-          return {
-            id: column.publicId,
-            name: column.name,
-            position: column.position,
-            issues: column.columnIssues
-              .map((columnIssue) => {
-                const issue = columnIssue.issue
-                const parsedAssigneeResult =
-                  issue.assignee !== null
-                    ? ProjectBoardColumnItemAssigneeSchema.safeParse({
-                        id: issue.assignee.publicId,
-                        name:
-                          issue.assignee.firstName +
-                          " " +
-                          issue.assignee.lastName,
-                        email: issue.assignee.userCredential.email,
-                      })
-                    : null
-                return {
-                  id: columnIssue.publicId,
-                  title: issue.title,
-                  description: issue.description,
-                  position: columnIssue.position,
-                  status: column.name,
-                  assignee:
-                    parsedAssigneeResult !== null &&
-                    parsedAssigneeResult.success
-                      ? {
-                          id: parsedAssigneeResult.data.id,
-                          name: parsedAssigneeResult.data.name,
-                          email: parsedAssigneeResult.data.email,
-                        }
-                      : null,
-                  dueDate: issue.dueDate?.toISOString() ?? null,
-                  issueId: issue.publicId,
-                }
-              })
-              .sort((a, b) => a.position - b.position),
-          }
-        })
-        .sort((a, b) => a.position - b.position),
-    })
-    if (!parsedBoard.success) {
-      console.error(
-        "Error parsing updated project board data: ",
-        parsedBoard.error,
-      )
-      throw new HttpError(500, "Failed to parse updated project board data")
-    }
-
-    res.json(parsedBoard.data)
+    const responseData = await getProjectBoardById(updatedProjectBoard.publicId)
+    res.json(responseData)
   } catch (error: HttpError | unknown) {
     console.error(error instanceof HttpError ? error.message : error)
     res.status(error instanceof HttpError ? error.statusCode : 500).json({
@@ -589,5 +227,125 @@ router.patch("/:id", async (req: Request, res: Response) => {
     })
   }
 })
+
+async function getProjectBoardById(
+  projectBoardId: string,
+): Promise<z.infer<typeof ProjectBoardGETSchema>> {
+  const projectBoard = await prisma.projectBoard.findUnique({
+    where: { publicId: projectBoardId },
+    include: {
+      project: true,
+      columns: {
+        include: {
+          columnIssues: {
+            include: {
+              issue: {
+                include: {
+                  assignee: {
+                    include: {
+                      userCredential: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  if (projectBoard === null) {
+    throw new HttpError(404, "Project Board not found")
+  }
+
+  const project = projectBoard.project
+  if (project === null || project === undefined) {
+    throw new HttpError(404, "Project not found")
+  }
+
+  const { description, name, publicId } = projectBoard
+
+  const columns: z.infer<typeof ProjectBoardColumnSchema>[] = []
+  for (const column of projectBoard.columns) {
+    const issues: z.infer<typeof ProjectBoardColumnItemGetSchema>[] = []
+    for (const issue of column.columnIssues) {
+      const issueAssignee = issue.issue.assignee
+      const parsedAssigneeResult =
+        issueAssignee !== null
+          ? ProjectBoardColumnItemAssigneeSchema.safeParse({
+              id: issueAssignee.publicId,
+              name: issueAssignee.firstName + " " + issueAssignee.lastName,
+              email: issueAssignee.userCredential.email,
+            })
+          : null
+
+      let assignee = null
+      if (parsedAssigneeResult !== null) {
+        if (!parsedAssigneeResult.success) {
+          throw new HttpError(
+            500,
+            "Failed to parse assignee data: " +
+              parsedAssigneeResult.error.message,
+          )
+        }
+        assignee = parsedAssigneeResult.data
+      }
+      const parsedIssueResult = ProjectBoardColumnItemGetSchema.safeParse({
+        id: issue.publicId,
+        title: issue.issue.title,
+        description: issue.issue.description,
+        position: issue.position,
+        issueId: issue.issue.publicId,
+        assignee: assignee,
+        dueDate: issue.issue.dueDate?.toISOString() ?? null,
+      })
+
+      if (!parsedIssueResult.success) {
+        throw new HttpError(
+          500,
+          "Failed to parse project board issue data: " +
+            parsedIssueResult.error.message,
+        )
+      }
+
+      issues.push(parsedIssueResult.data)
+    }
+    issues.sort((a, b) => a.position - b.position)
+
+    const parsedColumnResult = ProjectBoardColumnSchema.safeParse({
+      id: column.publicId,
+      name: column.name,
+      position: column.position,
+      issues,
+    })
+
+    if (!parsedColumnResult.success) {
+      throw new HttpError(
+        500,
+        "Failed to parse project board column data: " +
+          parsedColumnResult.error.message,
+      )
+    }
+
+    columns.push(parsedColumnResult.data)
+  }
+  columns.sort((a, b) => a.position - b.position)
+
+  const parsedBoard = ProjectBoardGETSchema.safeParse({
+    id: publicId,
+    description: description,
+    name: name,
+    projectId: project.publicId,
+    columns,
+  })
+  if (!parsedBoard.success) {
+    throw new HttpError(
+      500,
+      "Failed to parse project board data: " + parsedBoard.error.message,
+    )
+  }
+
+  return parsedBoard.data
+}
 
 export default router
